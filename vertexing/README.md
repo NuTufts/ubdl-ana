@@ -42,6 +42,7 @@ To do for the reco chain:
 Short description of samples found in `inputlists/`.
 
 | inputlist | description |
+|:--------- |:------------|
 | mcc9_v29e_dl_run3b_bnb_intrinsic_nue_LowE | intrinsic nue interactions below 400 MeV |
 
 # Scripts
