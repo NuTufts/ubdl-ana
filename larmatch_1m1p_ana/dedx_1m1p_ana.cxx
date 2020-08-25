@@ -400,10 +400,17 @@ int main( int nargs, char** argv )
     std::vector<int> pid_by_len_v(nuvertex.track_v.size(),0);
     float longest_len = 0;
     int longest_len_id = 0;
+    int shortest_len_id = 0;
+    float shortest_len = 1e9;
+
     for (int itrack=0; itrack<(int)nuvertex.track_v.size(); itrack++) {
       if ( longest_len<track_len_v[itrack] ) {
         longest_len = track_len_v[itrack];
         longest_len_id = itrack;
+      }
+      if ( shortest_len>track_len_v[itrack] ) {
+	shortest_len = track_len_v[itrack];
+	shortest_len_id = itrack;
       }
     }
     
@@ -414,8 +421,10 @@ int main( int nargs, char** argv )
 
         if ( trkpt.pid==longest_len_id )
           pid = 13;
-        else
+	else if ( trkpt.pid==shortest_len_id && shortest_len_id!=longest_len_id )
           pid = 2212;
+	else if ( shortest_len_id!=longest_len_id )
+	  pid = 111;
         
         res = trkpt.res;
         pixval = trkpt.q;
