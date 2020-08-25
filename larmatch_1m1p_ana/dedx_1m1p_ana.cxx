@@ -4,6 +4,7 @@
 
 #include "TFile.h"
 #include "TTree.h"
+#include "TSpline.h"
 
 #include "larcv/core/DataFormat/IOManager.h"
 #include "larcv/core/DataFormat/EventImage2D.h"
@@ -28,6 +29,8 @@ int main( int nargs, char** argv )
   std::string dlmerged_input_file = argv[1];
   std::string kpsreco_ana_file = argv[2];
   std::string output_file = argv[3];
+
+  std::string splinefile = argv[4];
 
   // what inputs we need
   // --------------------
@@ -120,6 +123,14 @@ int main( int nargs, char** argv )
   fvv->SetBranchAddress("Zreco",  &zreco );
   fvv->SetBranchAddress("BDTscore_1mu1p_nu", &bdtscore_1m1p);  
 
+
+  // spline file
+  float q2adc = 93.0/2.2;
+
+  TFile* splinefile_rootfile = new TFile( splinefile.c_str(), "open" );
+  TSpline3* sMuonRange2dEdx = (TSpline3*)splinefile_rootfile->Get("sMuonRange2dEdx");
+  TSpline3* sProtonRange2dEdx = (TSpline3*)splinefile_rootfile->Get("sProtonRange2dEdx");  
+  
   int nentries = iolcv.get_n_entries();
 
   larutil::SpaceChargeMicroBooNE sce;
@@ -137,6 +148,7 @@ int main( int nargs, char** argv )
   float dqdx;
   float pixval_med;
   float dqdx_med;
+  float llpid_pt;
 
   ana->Branch("pid",&pid,"pid/I");
   ana->Branch("res",&res,"res/F");
@@ -146,6 +158,15 @@ int main( int nargs, char** argv )
   ana->Branch("dqdx",&dqdx,"dqdx/F");
   ana->Branch("pixval_med",&pixval_med,"pixval_med/F");
   ana->Branch("dqdx_med",&dqdx_med,"dqdx_med/F");
+  ana->Branch("llpid_pt",&llpid_pt,"llpid_pt");
+
+  TTree* llana = new TTree("llana","log-likelihood score per track");
+  int pid_track;
+  float llpid_track;
+  float len_track;
+  llana->Branch("pid",&pid_track,"pid/I");
+  llana->Branch("llpid",&llpid_track,"llpid/F");
+  llana->Branch("len",&len_track,"len/F");
 
   std::cout << "NUM ENTRIES: " << nentries << std::endl;
   for (int ientry=0; ientry<nentries; ientry++ ) {
@@ -225,6 +246,8 @@ int main( int nargs, char** argv )
       float q_med;
       float dqdx_med;
       float lm;
+      float ll;
+      float llw;
       std::vector<float> pt;
       bool operator<( const TrackPt_t& rhs ) const
       {
@@ -244,6 +267,7 @@ int main( int nargs, char** argv )
     };
 
     std::vector<float> track_len_v( nuvertex.track_v.size(), 0);
+    std::vector<float> track_ll_v( nuvertex.track_v.size(), 0 );
     typedef std::vector<TrackPt_t> TrackPtList_t;
     std::vector< TrackPtList_t > trackpt_list_v;
 
@@ -386,13 +410,36 @@ int main( int nargs, char** argv )
       std::cout << "Total length of track: " << current_len << " cm" << std::endl;
       std::sort( trackpt_v.begin(), trackpt_v.end() );
 
+      // calculate residual range
+      // calculate likelihood
+      float totw = 0.;
+      float totll = 0.;
       for ( auto& trkpt : trackpt_v ) {
         trkpt.res = current_len - trkpt.s;
+
+        float mu_dedx = sMuonRange2dEdx->Eval(trkpt.res);
+        float mu_dedx_birks = q2adc*mu_dedx/(1+mu_dedx*0.0486/0.273/1.38);
+        float p_dedx = sProtonRange2dEdx->Eval(trkpt.res);
+        float p_dedx_birks = q2adc*p_dedx/(1+p_dedx*0.0486/0.273/1.38);
+        
+        float dmu = trkpt.dqdx_med-mu_dedx_birks;
+        float dp  = trkpt.dqdx_med-p_dedx_birks;
+
+        float llpt = -0.5*dmu*dmu/100.0 + 0.5*dp*dp/100.0;
+        float w_dedx = (mu_dedx_birks-p_dedx_birks)*(mu_dedx_birks-p_dedx_birks);
+        trkpt.ll = llpt;
+        trkpt.llw = w_dedx;
+        totll += llpt*w_dedx;
+        totw  += w_dedx;
       }
+      if ( totw>0 )
+        totll /= totw;
 
       track_len_v[itrack] = current_len;
-        
+      track_ll_v[itrack] = totll;
+      
       trackpt_list_v.emplace_back( std::move(trackpt_v) );
+
         
     }//end of track list
 
@@ -412,6 +459,18 @@ int main( int nargs, char** argv )
 	shortest_len = track_len_v[itrack];
 	shortest_len_id = itrack;
       }
+    }
+
+    for (int itrack=0; itrack<(int)nuvertex.track_v.size(); itrack++) {
+      if ( itrack==longest_len_id )
+        pid_track = 13;
+      else if ( itrack==shortest_len_id && shortest_len_id!=longest_len_id )
+        pid_track = 2212;
+      else if ( shortest_len_id!=longest_len_id )
+        pid_track = 111;
+      llpid_track = track_ll_v[itrack];
+      len_track   = track_len_v[itrack];
+      llana->Fill();
     }
     
     
