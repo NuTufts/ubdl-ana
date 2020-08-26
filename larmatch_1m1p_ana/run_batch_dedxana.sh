@@ -14,6 +14,7 @@ OUTPUT_DIR=${WORKDIR}/dedxana_outputdir/${SAMPLE_NAME}
 LARMATCH_OUTDIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/larmatch_1m1p_ana/outputdir/${SAMPLE_NAME}
 KPSRECO_OUTDIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/larmatch_1m1p_ana/reco_outputdir/${SAMPLE_NAME}
 OUTPUT_LOGDIR=${WORKDIR}/dedxana_logdir/${SAMPLE_NAME}
+SPLINE_FILE=${WORKDIR}/Proton_Muon_Range_dEdx_LAr_TSplines.root
 
 mkdir -p $OUTPUT_DIR
 mkdir -p $OUTPUT_LOGDIR
@@ -82,7 +83,7 @@ for ((i=0;i<${STRIDE};i++)); do
     echo "[input] dlmerged: ${inputfile}"
     echo "[input] kpsana: ${kpsreco_path}"
     echo "[output] dedxana: ${dedxana_rootname}"
-    CMD="${LARMATCH_DEDXANA_DIR}/./dedx_1m1p_ana ${inputfile} ${kpsreco_path} ${dedxana_rootname}"
+    CMD="${LARMATCH_DEDXANA_DIR}/./dedx_1m1p_ana ${inputfile} ${kpsreco_path} ${dedxana_rootname} ${SPLINE_FILE}"
     echo $CMD
     $CMD >> ${local_logfile} 2>&1
 

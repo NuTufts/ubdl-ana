@@ -164,9 +164,11 @@ int main( int nargs, char** argv )
   int pid_track;
   float llpid_track;
   float len_track;
+  float ddlvertex;
   llana->Branch("pid",&pid_track,"pid/I");
   llana->Branch("llpid",&llpid_track,"llpid/F");
   llana->Branch("len",&len_track,"len/F");
+  llana->Branch("ddlvertex",&ddlvertex,"ddlvertex/F");  
 
   std::cout << "NUM ENTRIES: " << nentries << std::endl;
   for (int ientry=0; ientry<nentries; ientry++ ) {
@@ -429,8 +431,10 @@ int main( int nargs, char** argv )
         float w_dedx = (mu_dedx_birks-p_dedx_birks)*(mu_dedx_birks-p_dedx_birks);
         trkpt.ll = llpt;
         trkpt.llw = w_dedx;
-        totll += llpt*w_dedx;
-        totw  += w_dedx;
+	if ( trkpt.dqdx_med>10.0 ) {
+	  totll += llpt*w_dedx;
+	  totw  += w_dedx;
+	}
       }
       if ( totw>0 )
         totll /= totw;
@@ -470,6 +474,7 @@ int main( int nargs, char** argv )
         pid_track = 111;
       llpid_track = track_ll_v[itrack];
       len_track   = track_len_v[itrack];
+      ddlvertex   = dist_to_dlvertex;
       llana->Fill();
     }
     
