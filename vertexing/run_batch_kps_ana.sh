@@ -3,6 +3,7 @@
 OFFSET=$1
 STRIDE=$2
 SAMPLE_NAME=$3
+ISMC=$4
 
 # we assume we are already in the container
 
@@ -73,7 +74,7 @@ for ((i=0;i<${STRIDE};i++)); do
     local_outfile=$(echo $baseinput  | sed 's|merged_dlreco|kps_vertexana|g' | sed 's|.root||g' | xargs -I{} echo {}"-${jobname}.root")
     echo "outfile : "$local_outfile
     
-    CMD="${LARMATCHANA_DIR}/./kpsreco_vertexana ${inputfile} ${kpsreco_path} ${local_outfile}"
+    CMD="${LARMATCHANA_DIR}/./kpsreco_vertexana ${inputfile} ${kpsreco_path} ${local_outfile} ${ISMC}"
     echo $CMD
     $CMD >> ${local_logfile} 2>&1
 
