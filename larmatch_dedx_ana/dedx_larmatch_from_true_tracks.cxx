@@ -2,6 +2,7 @@
 
 #include "TFile.h"
 #include "TTree.h"
+#include "TSpline.h"
 
 #include "larcv/core/DataFormat/IOManager.h"
 #include "larcv/core/DataFormat/EventImage2D.h"
@@ -27,6 +28,7 @@ int main( int nargs, char** argv )
   std::string dlmerged_input_file = argv[1];
   std::string larmatch_input_file = argv[2];
   std::string output_file = argv[3];
+  std::string splinefile = argv[4];  
 
   larlite::storage_manager io( larlite::storage_manager::kREAD );
   io.add_in_filename( dlmerged_input_file );
@@ -48,6 +50,13 @@ int main( int nargs, char** argv )
   larutil::SpaceChargeMicroBooNE sce;
   const std::vector<Double_t> orthy = larutil::Geometry::GetME()->GetOrthVectorsY();
   const std::vector<Double_t> orthz = larutil::Geometry::GetME()->GetOrthVectorsZ();
+
+  // spline file
+  float q2adc = 93.0/2.2;
+  TFile* splinefile_rootfile = new TFile( splinefile.c_str(), "open" );
+  TSpline3* sMuonRange2dEdx = (TSpline3*)splinefile_rootfile->Get("sMuonRange2dEdx");
+  TSpline3* sProtonRange2dEdx = (TSpline3*)splinefile_rootfile->Get("sProtonRange2dEdx");  
+  
  
   TFile* out = new TFile(output_file.c_str(),"new");
   TTree* ana = new TTree("anadedx", "Analysis of dQdx using truth tracks");
@@ -69,6 +78,17 @@ int main( int nargs, char** argv )
   ana->Branch("dqdx",&dqdx,"dqdx/F");
   ana->Branch("pixval_med",&pixval_med,"pixval_med/F");
   ana->Branch("dqdx_med",&dqdx_med,"dqdx_med/F");
+
+  TTree* llana = new TTree("llana","log-likelihood score per track");
+  int pid_track;
+  float llpid_track;
+  float len_track;
+  float ddlvertex;
+  llana->Branch("pid",&pid_track,"pid/I");
+  llana->Branch("llpid",&llpid_track,"llpid/F");
+  llana->Branch("len",&len_track,"len/F");
+  llana->Branch("ddlvertex",&ddlvertex,"ddlvertex/F");  
+  
 
   std::cout << "NUM ENTRIES: " << nentries << std::endl;
   for (int ientry=0; ientry<nentries; ientry++ ) {
@@ -153,6 +173,8 @@ int main( int nargs, char** argv )
       float q_med;
       float dqdx_med;
       float lm;
+      float ll;
+      float llw;
       std::vector<float> pt;
       bool operator<( const TrackPt_t& rhs ) const
       {
@@ -354,11 +376,40 @@ int main( int nargs, char** argv )
         std::cout << "Total length of track: " << current_len << " cm" << std::endl;
         std::sort( trackpt_v.begin(), trackpt_v.end() );
 
+        // calculate residual range and proton/muon likelihood ratio
+        float totw = 0.;
+        float totll = 0.;        
         for ( auto& trkpt : trackpt_v ) {
           trkpt.res = current_len - trkpt.s;
+          
+          float mu_dedx = sMuonRange2dEdx->Eval(trkpt.res);
+          float mu_dedx_birks = q2adc*mu_dedx/(1+mu_dedx*0.0486/0.273/1.38);
+          float p_dedx = sProtonRange2dEdx->Eval(trkpt.res);
+          float p_dedx_birks = q2adc*p_dedx/(1+p_dedx*0.0486/0.273/1.38);
+        
+          float dmu = trkpt.dqdx_med-mu_dedx_birks;
+          float dp  = trkpt.dqdx_med-p_dedx_birks;
+
+          float llpt = -0.5*dmu*dmu/100.0 + 0.5*dp*dp/100.0;
+          float w_dedx = (mu_dedx_birks-p_dedx_birks)*(mu_dedx_birks-p_dedx_birks);
+          trkpt.ll = llpt;
+          trkpt.llw = w_dedx;
+          if ( trkpt.dqdx_med>10.0 ) {
+            totll += llpt*w_dedx;
+            totw  += w_dedx;
+          }
         }
+        if ( totw>0 )
+          totll /= totw;
         
         trackpt_list_v.emplace_back( std::move(trackpt_v) );
+
+        // fill track tree variables
+        pid_track = pid;
+        llpid_track = totll;
+        len_track = current_len;
+        ddlvertex = 0.0; // zero by definition, added to match 1m1p tree
+        llana->Fill();
         
       }//end of loop over tracks
     }//end of track list

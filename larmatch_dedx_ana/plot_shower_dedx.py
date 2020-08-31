@@ -3,7 +3,7 @@ import ROOT as rt
 
 rt.gStyle.SetOptStat(0)
 
-inputfile = "test2.root"
+inputfile = "dedxana_shower.root"
 
 """
 TFile**		Proton_Muon_Range_dEdx_LAr_TSplines.root	

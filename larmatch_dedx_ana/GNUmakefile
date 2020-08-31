@@ -15,11 +15,11 @@ LDFLAGS+=`larlite-config --libs`
 LDFLAGS+=`root-config --libs`
 
 
-all: dedx_larmatch_from_true_showers
+all: dedx_larmatch_from_true_showers dedx_larmatch_from_true_tracks
 
 %: %.cxx
 	@echo "<< compile $@ >>"
 	$(CXX) $(CXXFLAGS)  $< -o $@ $(LDFLAGS)
 
 clean:
-	@rm dedx_larmatch_from_true_showers
+	@rm dedx_larmatch_from_true_showers dedx_larmatch_from_true_tracks
