@@ -141,6 +141,12 @@ int main( int nargs, char** argv )
   float dqdx_med;    // median plane dqdx
   float llpid_pt;    // -log-likelihood ratio
 
+  // shower level variables to cut on
+  float dist2vertex_shower; // distance of shower to vertex  
+  float llpid_shower;
+  float qtot_shower;
+  float ddlvertex;
+  
   ana->Branch("dist2start", &dist2start, "dist2start/F");
   ana->Branch("rad",&rad,"rad/F");
   ana->Branch("lm",&lm,"lm/F");      
@@ -149,14 +155,12 @@ int main( int nargs, char** argv )
   ana->Branch("pixval_med",&pixval_med,"pixval_med/F");
   ana->Branch("dqdx_med",&dqdx_med,"dqdx_med/F");
   ana->Branch("llpid_pt",&llpid_pt,"llpid_pt");
+  ana->Branch("dist2vertex_shower",&dist2vertex_shower,"dist2vertex_shower/F");
+  ana->Branch("qtot_shower",&qtot_shower,"qtot_shower/F");  
 
   // per shower tree
   TTree* llana = new TTree("llana","log-likelihood score per track");
-  float dist2vertex; // distance of shower to vertex  
-  float llpid_shower;
-  float qtot_shower;
-  float ddlvertex;
-  ana->Branch("dist2vertex",&dist2vertex,"dist2vertex/F");  
+  ana->Branch("dist2vertex",&dist2vertex_shower,"dist2vertex/F");  
   llana->Branch("llpid",&llpid_shower,"llpid/F");
   llana->Branch("qtot",&qtot_shower,"qtot/F");
   llana->Branch("ddlvertex",&ddlvertex,"ddlvertex/F");  
@@ -260,7 +264,8 @@ int main( int nargs, char** argv )
     };
 
     std::vector<float> shower_d2vtx_v( nuvertex.shower_v.size(), 0);
-    std::vector<float> shower_ll_v( nuvertex.shower_v.size(), 0 );
+    std::vector<float> shower_ll_v(    nuvertex.shower_v.size(), 0 );
+    std::vector<float> shower_qtot_v(  nuvertex.shower_v.size(), 0 );    
     typedef std::vector<ShowerPt_t> ShowerPtList_t;
     std::vector< ShowerPtList_t > showerpt_list_v;
 
@@ -423,6 +428,7 @@ int main( int nargs, char** argv )
       // calculate likelihood
       float totw = 0.;
       float totll = 0.;
+      float qsum_med = 0.;      
       for ( auto& shwrpt : showerpt_v ) {
 
         float dgamma     = shwrpt.dqdx_med-140.0;
@@ -436,11 +442,13 @@ int main( int nargs, char** argv )
 	  totll += llpt*w_dedx;
 	  totw  += w_dedx;
 	}
+        qsum_med += shwrpt.q_med;
       }
       if ( totw>0 )
         totll /= totw;
 
       shower_ll_v[ishower] = totll;
+      shower_qtot_v[ishower] = qsum_med;
       
       showerpt_list_v.emplace_back( std::move(showerpt_v) );
 
@@ -450,16 +458,15 @@ int main( int nargs, char** argv )
     // Fill Shower Info
     for (int ishower=0; ishower<(int)nuvertex.shower_v.size(); ishower++) {
 
-      dist2vertex = shower_d2vtx_v[ishower];
+      dist2vertex_shower = shower_d2vtx_v[ishower];
       llpid_shower = shower_ll_v[ishower];
-      qtot_shower  = 0.0;
+      qtot_shower  = shower_qtot_v[ishower];
       ddlvertex   = dist_to_dlvertex;
       llana->Fill();
-    }
-    
-    
-    // fill track points
-    for ( auto& showerpt_v : showerpt_list_v ) {
+
+      // fill track points
+      auto& showerpt_v = showerpt_list_v[ishower];
+      
       for (auto& shwrpt : showerpt_v ) {
         
         dist2start = shwrpt.s;
