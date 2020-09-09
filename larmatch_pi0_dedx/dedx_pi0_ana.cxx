@@ -156,7 +156,8 @@ int main( int nargs, char** argv )
   ana->Branch("dqdx_med",&dqdx_med,"dqdx_med/F");
   ana->Branch("llpid_pt",&llpid_pt,"llpid_pt");
   ana->Branch("dist2vertex_shower",&dist2vertex_shower,"dist2vertex_shower/F");
-  ana->Branch("qtot_shower",&qtot_shower,"qtot_shower/F");  
+  ana->Branch("qtot_shower",&qtot_shower,"qtot_shower/F");
+  ana->Branch("llpid_shower",&llpid_shower,"llpid_shower/F");  
 
   // per shower tree
   TTree* llana = new TTree("llana","log-likelihood score per track");
@@ -434,7 +435,7 @@ int main( int nargs, char** argv )
         float dgamma     = shwrpt.dqdx_med-140.0;
         float delectron  = shwrpt.dqdx_med-75.0;
 
-        float llpt = -0.5*dgamma*dgamma/(25.0*25.0) + 0.5*delectron*delectron/(15.0*15.0);
+        float llpt = -0.5*dgamma*dgamma/(15.0*15.0) + 0.5*delectron*delectron/(15.0*15.0);
         float w_dedx = 1.0;
         shwrpt.ll = llpt;
         shwrpt.llw = w_dedx;
