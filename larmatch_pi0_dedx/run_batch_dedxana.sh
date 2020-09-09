@@ -7,12 +7,12 @@ WORKDIR=$4
 
 # we assume we are already in the container
 UBDL_DIR=/cluster/tufts/wongjiradlab/twongj01/ubdl/
-INPUTLIST=${WORKDIR}/inputlists/${SAMPLE_NAME}.txt
+INPUTLIST=${WORKDIR}/inputlists/${SAMPLE_NAME}.list
 LARMATCH_DIR=${UBDL_DIR}/larflow/larmatchnet/
 LARMATCH_DEDXANA_DIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/larmatch_pi0_dedx/
 OUTPUT_DIR=${WORKDIR}/dedxana_outputdir/${SAMPLE_NAME}
-LARMATCH_OUTDIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/larmatch_pi0_dedx/outputdir/${SAMPLE_NAME}
-KPSRECO_OUTDIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/larmatch_pi0_dedx/reco_outputdir/${SAMPLE_NAME}
+LARMATCH_OUTDIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/vertexing/outputdir/${SAMPLE_NAME}
+KPSRECO_OUTDIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/vertexing/reco_outputdir/${SAMPLE_NAME}
 OUTPUT_LOGDIR=${WORKDIR}/dedxana_logdir/${SAMPLE_NAME}
 
 mkdir -p $OUTPUT_DIR
@@ -22,13 +22,13 @@ mkdir -p $OUTPUT_LOGDIR
 start_jobid=$(( ${OFFSET} + ${SLURM_ARRAY_TASK_ID}*${STRIDE}  ))
 
 # LOCAL JOBDIR
-local_jobdir=`printf /tmp/dedxana_1m1p_jobid%04d_${SAMPLE_NAME} ${SLURM_ARRAY_TASK_ID}`
+local_jobdir=`printf /tmp/dedxana_pi0_jobid%04d_${SAMPLE_NAME} ${SLURM_ARRAY_TASK_ID}`
 echo "local jobdir: $local_jobdir"
 rm -rf $local_jobdir
 mkdir -p $local_jobdir
 
 # local log file
-local_logfile=`printf dedxana_1m1p_jobid%04d_${SAMPLE_NAME}.log ${SLURM_ARRAY_TASK_ID}`
+local_logfile=`printf dedxana_pi0_jobid%04d_${SAMPLE_NAME}.log ${SLURM_ARRAY_TASK_ID}`
 echo "output logfile: "$local_logfile
 
 echo "SETUP CONTAINER/ENVIRONMENT"
