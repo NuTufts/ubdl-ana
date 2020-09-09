@@ -160,7 +160,7 @@ int main( int nargs, char** argv )
 
   // per shower tree
   TTree* llana = new TTree("llana","log-likelihood score per track");
-  ana->Branch("dist2vertex",&dist2vertex_shower,"dist2vertex/F");  
+  llana->Branch("dist2vertex",&dist2vertex_shower,"dist2vertex/F");  
   llana->Branch("llpid",&llpid_shower,"llpid/F");
   llana->Branch("qtot",&qtot_shower,"qtot/F");
   llana->Branch("ddlvertex",&ddlvertex,"ddlvertex/F");  
