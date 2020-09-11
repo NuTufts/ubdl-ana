@@ -72,6 +72,7 @@ for ((i=0;i<${STRIDE};i++)); do
     echo "COPY output to "${OUTPUT_DIR}/${subdir}/
     mkdir -p $OUTPUT_DIR/${subdir}/
     cp ${local_basename}* $OUTPUT_DIR/${subdir}/
+    rm ${local_basename}*
 done
 
 # copy log to logdir
