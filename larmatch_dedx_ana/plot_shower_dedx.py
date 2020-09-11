@@ -26,8 +26,12 @@ infile = rt.TFile( inputfile, "open" )
 anadedx = infile.Get( "anadedx" )
 
 outfile = rt.TFile( "temp.root", "recreate" )
-helectron = rt.TH2D("hdqdx_electron",";residual range (cm); #frac{dQ}{dx} (pixel sum per cm)",20,0,10,50,0,350)
-hgamma    = rt.TH2D("hdqdx_gamma",   ";residual range (cm); #frac{dQ}{dx} (pixel sum per cm)",20,0,10,50,0,350)
+nbinsy = 50
+nbinsx = 50
+xend   = 10
+ymax   = 250
+helectron = rt.TH2D("hdqdx_electron",";residual range (cm); #frac{dQ}{dx} (pixel sum per cm)",nbinsx,0,xend,nbinsy,0,ymax)
+hgamma    = rt.TH2D("hdqdx_gamma",   ";residual range (cm); #frac{dQ}{dx} (pixel sum per cm)",nbinsx,0,xend,nbinsy,0,ymax)
 
 mu_curve = rt.TGraph( 50 )
 for i in xrange(50):

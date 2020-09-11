@@ -22,7 +22,7 @@ dist_nbins = 50
 dist_range = (0.0,10.0)
 dist_plot = [("dist_all","min_dist_to_vtx","1==1",rt.kBlue,"All"),
              ("dist_kp","min_dist_to_vtx","1==1",rt.kBlue,"Keypoint Net"),
-             ("dist_wc","min_dist_to_vtx_wct","1==1",rt.kCyan,"Keypoint Net+WC filter"),
+             #("dist_wc","min_dist_to_vtx_fit","1==1",rt.kCyan,"Keypoint Net+WC filter"),
              ("dist_dl","min_dist_to_vtx_dl","1==1",rt.kRed,"DLLEE Vertexer")]
 
 hmax = {}
@@ -69,7 +69,7 @@ for (cutname,select_cut) in selection:
 
     hdist["hdist_kp_"+cutname].GetYaxis().SetRangeUser(0,1.2*hmax[(cutname,select_cut)])
     hdist["hdist_kp_"+cutname].Draw("hist")
-    hdist["hdist_wc_"+cutname].Draw("histsame")
+    #hdist["hdist_wc_"+cutname].Draw("histsame")
     hdist["hdist_dl_"+cutname].Draw("histsame")
 
     tdist[cutname].Draw()

@@ -15,7 +15,7 @@ bg_tree = bg_file.Get( "nuvertexana_event" )
 
 
 # SAMPLE
-samples = [("nu",nu_tree,rt.kBlue),
+samples = [("nu",nu_tree,rt.kRed),
            ("bg",bg_tree,rt.kBlack)]
 
 
@@ -58,6 +58,8 @@ for (varname,varnu,varbg,label) in badrate_plot:
             
     hname_nu = "h"+varname+"_nu"
     hname_bg = "h"+varname+"_bg"
+    hbadrate[hname_nu].SetLineWidth(2)
+    hbadrate[hname_bg].SetLineWidth(2)
     hbadrate[hname_nu].Draw("histsame")
     hbadrate[hname_bg].Draw("histsame")
     cbadrate[varname].Update()

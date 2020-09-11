@@ -21,9 +21,9 @@ teff = {}
 eff_nbins = 40
 eff_range = (0,400)
 eff_plot = [("eff_enu_all","Enu_true","1==1",rt.kBlue,"All"),
-            ("eff_enu_kp","Enu_true","min_dist_to_vtx<5.0",rt.kBlue,"Keypoint Net"),
-            ("eff_enu_wc","Enu_true","min_dist_to_vtx_wct<5.0",rt.kCyan,"Keypoint Net+WC filter"),
-            ("eff_enu_dl","Enu_true","min_dist_to_vtx_dl<5.0",rt.kRed,"DLLEE Vertexer")]
+            ("eff_enu_kp","Enu_true","min_dist_to_vtx<3.0",rt.kBlue,"Keypoint Net"),
+            #("eff_enu_wc","Enu_true","min_dist_to_vtx_wct<5.0",rt.kCyan,"Keypoint Net+WC filter"),
+            ("eff_enu_dl","Enu_true","min_dist_to_vtx_dl<3.0",rt.kRed,"DLLEE Vertexer")]
 
 for (cutname,select_cut) in selection:
     ceff[cutname] = rt.TCanvas("ceff_"+cutname,"Eff vs. true Enu, %s"%(cutname),800,400)
@@ -61,7 +61,7 @@ for (cutname,select_cut) in selection:
 
     
     heff["heff_enu_kp_"+cutname].Draw()
-    heff["heff_enu_wc_"+cutname].Draw("same")
+    #heff["heff_enu_wc_"+cutname].Draw("same")
     heff["heff_enu_dl_"+cutname].Draw("same")
 
     teff[cutname].Draw()
