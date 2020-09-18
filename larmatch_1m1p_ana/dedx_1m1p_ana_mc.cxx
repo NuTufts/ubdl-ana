@@ -28,11 +28,10 @@ int main( int nargs, char** argv )
 {
 
   std::string dlmerged_1m1p_file  = argv[1];
-  std::string larmatch_input_file = argv[2];
-  std::string kpsreco_ana_file    = argv[3];
-  std::string output_file         = argv[4];
+  std::string kpsreco_ana_file    = argv[2];
+  std::string output_file         = argv[3];
 
-  std::string splinefile = argv[5];
+  std::string splinefile = argv[4];
 
   // what inputs we need
   // --------------------
@@ -328,13 +327,18 @@ int main( int nargs, char** argv )
     typedef std::vector<TrackPt_t> TrackPtList_t;
     std::vector< TrackPtList_t > trackpt_list_v;
 
-    std::cout << "[vertex] ntrack=" << nuvertex.track_v.size() << " nhitcluster=" << nuvertex.track_hitcluster_v.size() << std::endl;
-
+    std::cout << "[vertex] ntrack=" << nuvertex.track_v.size() 
+	      << " nhitcluster=" << nuvertex.track_hitcluster_v.size() 
+	      << " ntruthmatch-info=" << truthmatch_vtxinfo.trackinfo_v.size()
+	      << std::endl;
+    
     for (int itrack=0; itrack<nuvertex.track_v.size(); itrack++) {
       
       const larlite::track& lltrack = nuvertex.track_v.at(itrack);
       const larlite::larflowcluster& lfcluster = nuvertex.track_hitcluster_v.at(itrack);
       const larflow::reco::TrackTruthRecoInfo& truthmatch_trackinfo = truthmatch_vtxinfo.trackinfo_v.at(itrack);
+
+      std::cout << "Analyze vtx[" << closest_vertex_entry << "]-track[" << itrack << "]: npts=" << lltrack.NumberTrajectoryPoints() << std::endl;
 
       std::vector< float > hit_rad_v( lfcluster.size(), -1.0 ); /// this vector holds
                 
@@ -496,6 +500,8 @@ int main( int nargs, char** argv )
       }
       if ( totw>0 )
         totll /= totw;
+
+      std::cout << "track totll: " << totll << std::endl;
 
       track_len_v[itrack] = current_len;
       track_ll_v[itrack] = totll;
