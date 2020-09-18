@@ -96,7 +96,8 @@ int main( int nargs, char** argv )
 
   // full event file
   TFile fkpsreco( kpsreco_ana_file.c_str(), "open" );
-  TTree* kpsreco = (TTree*)fkpsreco.Get("KPSRecoManagerTree"); // event-indexed tree
+  TTree* kpsreco      = (TTree*)fkpsreco.Get("KPSRecoManagerTree"); // event-indexed tree
+
   int kpsreco_run;
   int kpsreco_subrun;
   int kpsreco_event;  
@@ -106,7 +107,10 @@ int main( int nargs, char** argv )
   kpsreco->SetBranchAddress( "subrun", &kpsreco_subrun );
   kpsreco->SetBranchAddress( "event",  &kpsreco_event );    
   kpsreco->SetBranchAddress( "nufitted_v", &nufitted_v );
-  kpsreco->SetBranchAddress( "track_truthreco_vtxinfo_v", &truthmatch_vtxinfo_v );
+
+  TFile fkpsreco_hack( kpsreco_ana_file.c_str(), "open" );  
+  TTree* kpsreco_hack = (TTree*)fkpsreco_hack.Get("KPSRecoManagerTree"); // event-indexed tree, second copy  
+  kpsreco_hack->SetBranchAddress( "track_truthreco_vtxinfo_v", &truthmatch_vtxinfo_v );
 
   /**
    * DLMERGED 1M1P FILE
@@ -220,22 +224,37 @@ int main( int nargs, char** argv )
     
     // SEARCH FOR THE (RUN,SUBRUN,ENTRY) in the larcv,larlite,and kpsreco trees
     bool found_rse = false;
+    int matching_iunfilter = -1;
     for (int iunfilter=0; iunfilter<(int)kpsreco->GetEntries(); iunfilter++) {
     
       //io.go_to(iunfilter);
       kpsreco->GetEntry(iunfilter);
       
-      if ( ubdlana_run==kpsreco_run && ubdlana_subrun==kpsreco_subrun && ubdlana_event==kpsreco_event
-           && ubdlana_run==run && ubdlana_subrun==subrun && ubdlana_event==event ) {
+      if ( kpsreco_run==run && kpsreco_subrun==subrun && kpsreco_event==event ) {
         found_rse = true;
+        matching_iunfilter = iunfilter;
         break;
       }
     }
-
+    
     if ( !found_rse ) {
       throw std::runtime_error("COULD NOT FIND RSE IN FILTERED FILE IN THE FULL FILES");
     }
+    else {
+      std::cout << "Unfiltered KPSReco tree. Matching entry " << matching_iunfilter << " of " << kpsreco->GetEntries() << std::endl;
+    }
 
+    if ( matching_iunfilter+1<kpsreco->GetEntries() )
+      kpsreco_hack->GetEntry( (matching_iunfilter+1) );
+    else {
+      std::cout << "skipping because i screwed up the truth tree" << std::endl;
+      continue;
+    }
+
+    if ( nufitted_v->size()!=truthmatch_vtxinfo_v->size() ) {
+      throw std::runtime_error("number of vertices and number of truth vertices is not the same");
+    }
+    
     // Get wire image
     const std::vector<larcv::Image2D>& adc_v = ev_adc->as_vector();
 
@@ -261,9 +280,12 @@ int main( int nargs, char** argv )
       throw std::runtime_error(ss.str());
     }
     else {
-      std::cout << "BEST DL vertex[" << fvv_vtxid << "]: (" << xreco << "," << yreco << "," << zreco << ") bdt-score=" << min_bdt_score << std::endl;
+      std::cout << "BEST DL vertex[" << fvv_vtxid << "]: entry= " << matching_fvv_entry
+                << " (" << xreco << "," << yreco << "," << zreco << ") "
+                << "bdt-score=" << min_bdt_score << std::endl;
     }
 
+    
     // Get the nuvertexcandidate closest to the DL vertex
     int closest_vertex_entry = -1;
     float dist_to_dlvertex = 1.0e9;
@@ -288,7 +310,12 @@ int main( int nargs, char** argv )
     
     auto const& nuvertex = nufitted_v->at(closest_vertex_entry);
     auto const& truthmatch_vtxinfo = truthmatch_vtxinfo_v->at(closest_vertex_entry);
-
+    
+    std::cout << "[vertex] ntrack=" << nuvertex.track_v.size() 
+	      << " nhitcluster=" << nuvertex.track_hitcluster_v.size() 
+	      << " ntruthmatch-info=" << truthmatch_vtxinfo.trackinfo_v.size()
+	      << std::endl;
+    
     struct TrackPt_t {
       int hitidx;
       int pid;
@@ -327,10 +354,10 @@ int main( int nargs, char** argv )
     typedef std::vector<TrackPt_t> TrackPtList_t;
     std::vector< TrackPtList_t > trackpt_list_v;
 
-    std::cout << "[vertex] ntrack=" << nuvertex.track_v.size() 
-	      << " nhitcluster=" << nuvertex.track_hitcluster_v.size() 
-	      << " ntruthmatch-info=" << truthmatch_vtxinfo.trackinfo_v.size()
-	      << std::endl;
+
+    if ( truthmatch_vtxinfo.trackinfo_v.size()!=nuvertex.track_v.size() ) {
+      throw std::runtime_error("number of track and number of truth track info is not the same");
+    }
     
     for (int itrack=0; itrack<nuvertex.track_v.size(); itrack++) {
       
@@ -502,12 +529,14 @@ int main( int nargs, char** argv )
         totll /= totw;
 
       std::cout << "track totll: " << totll << std::endl;
+      std::cout << "truth track pid: " << truthmatch_trackinfo.matched_true_pid << std::endl;
+      std::cout << "truth track mse: " << truthmatch_trackinfo.matched_mse << std::endl;
 
       track_len_v[itrack] = current_len;
       track_ll_v[itrack] = totll;
       
       trackpt_list_v.emplace_back( std::move(trackpt_v) );
-
+      std::cout << "----------------------" << std::endl;
         
     }//end of track list
 
