@@ -16,7 +16,7 @@ LDFLAGS+=`larlite-config --libs`
 LDFLAGS+=`root-config --libs`
 
 
-all: dedx_1m1p_ana
+all: dedx_1m1p_ana dedx_1m1p_ana_mc
 
 %: %.cxx
 	@echo "<< compile $@ >>"
