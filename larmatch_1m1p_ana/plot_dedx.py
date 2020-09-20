@@ -4,6 +4,7 @@ import ROOT as rt
 rt.gStyle.SetOptStat(0)
 
 inputfile = "dedxana_1m1p.root"
+#inputfile = "output_dedxanamc_bnb_nu_overlay_1m1p.root"
 
 """
 TFile**		Proton_Muon_Range_dEdx_LAr_TSplines.root	
