@@ -160,8 +160,17 @@ int main( int nargs, char** argv ) {
       
   }
 
+  std::cout << "[[WRITE OUTPUT]]" << std::endl;
   anatree->Write();
+
+  std::cout << "[[CLOSE OUTPUT]]" << std::endl;
+  out->Close();
+
+  std::cout << "[[CLOSE INPUT]]" << std::endl;
+  iolcv.finalize();
+  ioll.close();
   
+  std::cout << "[[FIN]]" << std::endl;
   
   return 0;
 }
