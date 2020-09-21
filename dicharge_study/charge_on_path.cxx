@@ -37,10 +37,13 @@ int main( int nargs, char** argv ) {
 
   TFile* out = new TFile( output_anafile.c_str(), "recreate" );
   TTree* anatree = new TTree("ana","ana");
+  int pid;
   float phi;
   float qperpix[3];
+  anatree->Branch("pid",&pid,"pid/I");
   anatree->Branch("phi",&phi,"phi/F");
   anatree->Branch("qperpix", qperpix, "qperpix[3]/F");
+
 
   for (int ientry=0; ientry<nentries; ientry++) {
 
@@ -61,8 +64,10 @@ int main( int nargs, char** argv ) {
 
       auto const& mct = ev_mctrack->at(itrack);
 
-      if ( mct.PdgCode()!=13 && mct.PdgCode()!=-13 )
+      if ( mct.PdgCode()!=13 && mct.PdgCode()!=-13 && mct.PdgCode()!=2212)
         continue;
+
+      pid = mct.PdgCode();
     
       std::vector< std::vector<float> > true_path
         = larflow::reco::TrackTruthRecoAna::getSCEtrueTrackPath( mct, psce );
