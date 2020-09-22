@@ -9,6 +9,7 @@
 #include "larcv/core/DataFormat/IOManager.h"
 #include "larcv/core/DataFormat/EventImage2D.h"
 #include "larflow/Reco/TrackTruthRecoAna.h"
+#include "ublarcvapp/MCTools/LArbysMC.h"
 
 #include "TTree.h"
 
@@ -23,6 +24,8 @@ int main( int nargs, char** argv ) {
   larlite::storage_manager ioll( larlite::storage_manager::kREAD );
   ioll.add_in_filename( input_larlite_mcinfo );
   ioll.set_data_to_read( larlite::data::kMCTrack,  "mcreco" );
+  ioll.set_data_to_read( larlite::data::kMCShower, "mcreco" );  
+  ioll.set_data_to_read( larlite::data::kMCTruth,  "generator" );
   ioll.open();
 
   larcv::IOManager iolcv( larcv::IOManager::kREAD, "iolcv", larcv::IOManager::kTickBackward );
@@ -44,6 +47,15 @@ int main( int nargs, char** argv ) {
   anatree->Branch("phi",&phi,"phi/F");
   anatree->Branch("qperpix", qperpix, "qperpix[3]/F");
 
+  TTree* trackana = new TTree("trackana","Track-level ana");
+  float track_phi;
+  float track_qperpix[3];
+  trackana->Branch("pid",&pid,"pid/I");
+  trackana->Branch("phi",&track_phi,"phi/F");
+  trackana->Branch("qperpix", track_qperpix, "qperpix[3]/F");
+
+  ublarcvapp::mctools::LArbysMC larbysmc;
+  larbysmc.bindAnaVariables( trackana );
 
   for (int ientry=0; ientry<nentries; ientry++) {
 
@@ -51,6 +63,9 @@ int main( int nargs, char** argv ) {
     
     ioll.go_to(ientry);
     iolcv.read_entry(ientry);
+
+    larbysmc.process( ioll );
+    larbysmc.printInteractionInfo();
 
     larlite::event_mctrack* ev_mctrack
       = (larlite::event_mctrack*)ioll.get_data(larlite::data::kMCTrack,"mcreco");
@@ -79,7 +94,14 @@ int main( int nargs, char** argv ) {
           
       int icurr_row = -1;
       std::vector<int> icurr_col(3,-1);
-      
+
+      // track level variables
+      float distfromvtx = 0; // path distance from vertex
+      int num_track_steps_summed = 0;
+      track_phi = 0.;
+      for (int j=0; j<3; j++ )
+        track_qperpix[j] = 0.;
+
       for (int i=0; i<(int)true_path.size()-1; i++) {
         const std::vector<float>& pt1 = true_path[i];
         const std::vector<float>& pt2 = true_path[i+1];
@@ -102,6 +124,9 @@ int main( int nargs, char** argv ) {
         float substep = steplen/float(nsubsteps);
 
         for (int istep=0; istep<nsubsteps; istep++) {
+
+          distfromvtx += substep;
+          
           std::vector<double> imgpt(3,0);
           for (int v=0; v<3; v++)
             imgpt[v] = (double)pt1[v] + (double)substep*istep*dir[v];
@@ -148,17 +173,36 @@ int main( int nargs, char** argv ) {
               }
             }
           }//end of dr loop
-          
+
+          // per point metric
           phi = atan2(dir[1],dir[0]);
           for (int p=0; p<3; p++) {
-            if ( totpix[p]>0 )
+            if ( totpix[p]>0 ) {
               qperpix[p] = totq[p]/totpix[p];
-            else
+            }
+            else {
               qperpix[p] = 0.;
+            }
+          }
+
+          // per track metric average over points
+          if ( distfromvtx<5.0 ); {
+            track_phi += phi;
+            for (int p=0; p<3; p++)
+              track_qperpix[p] += qperpix[p];
+            num_track_steps_summed++;
           }
           
+          
           anatree->Fill();
-        }
+        }//end of step loop
+      }//end of path loop
+
+      if ( num_track_steps_summed>0 ) {
+        track_phi /= num_track_steps_summed;
+        for (int p=0; p<3; p++)
+          track_qperpix[p] /= num_track_steps_summed;
+        trackana->Fill();
       }
       
     }
@@ -166,7 +210,7 @@ int main( int nargs, char** argv ) {
   }
 
   std::cout << "[[WRITE OUTPUT]]" << std::endl;
-  anatree->Write();
+  out->Write();
 
   std::cout << "[[CLOSE OUTPUT]]" << std::endl;
   out->Close();
