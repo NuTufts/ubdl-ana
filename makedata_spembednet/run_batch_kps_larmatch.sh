@@ -6,7 +6,7 @@ SAMPLE_NAME=$3
 
 # we assume we are already in the container
 
-WORKDIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/process_larmatch/
+WORKDIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/makedata_spembednet/
 UBDL_DIR=/cluster/tufts/wongjiradlab/twongj01/ubdl/
 INPUTLIST=${WORKDIR}/inputlists/${SAMPLE_NAME}.txt
 LARMATCH_DIR=${UBDL_DIR}/larflow/larmatchnet/
