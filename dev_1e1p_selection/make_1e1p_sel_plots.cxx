@@ -172,11 +172,11 @@ int main( int nargs, char** argv ) {
     for (int icut=0; icut<kNumCuts; icut++) {
       std::stringstream ss;
       ss << "hEnu_" << sample_names[isample] << "_" << selcut_names[icut] << "cut";
-      henu[isample][icut] = new TH1D(ss.str().c_str(),";true E_{#nu} (MeV)", 50,0,500);
+      henu[isample][icut] = new TH1D(ss.str().c_str(),";true E_{#nu} (MeV)", 300,0,3000);
 
       std::stringstream sseff;
       sseff << "hEff_" << sample_names[isample] << "_" << selcut_names[icut] << "cut";
-      henu_eff[isample][icut] = new TH1D(sseff.str().c_str(),";true E_{#nu} (MeV)",50,0,500);
+      henu_eff[isample][icut] = new TH1D(sseff.str().c_str(),";true E_{#nu} (MeV)",300,0,3000);
     }
   }
 
