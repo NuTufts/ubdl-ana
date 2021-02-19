@@ -34,21 +34,29 @@ for s in sample_names:
     canvas[s] = rt.TCanvas("c%s"%(s),s,1200,600)
     # load hists
     hs = {}
+    heffs = {}
     for cut in selcut_names:
-        h = rfile.Get( "hEff_%s_%scut"%(s,cut) )
+        h = rfile.Get( "hEnu_%s_%scut"%(s,cut) )
         print h
         if h:
             h.SetLineColor( selcut_colors[cut] )
             if cut in ["vertexcand","vertexact","allreco"]:
                 h.SetLineWidth(2)
+            heff = h.Clone("heffnew_%s_%scut"%(s,cut))
             hs[cut] = h
+            heffs[cut] = heff
+    for cut in selcut_names:
+        if cut in heffs:
+            heffs[cut].Divide( hs["fv"] )
     canvas[s].Draw()
-    hs["fv"].SetTitle("%s Events"%(s))
-    hs["fv"].Draw()
+    heffs["fv"].SetTitle("%s Events"%(s))
+    heffs["fv"].Draw()
+    heffs["fv"].GetYaxis().SetRangeUser(0,1.1)
     tlen = rt.TLegend(0.8,0.2,0.95,0.8)
     for cut in selcut_names[0:-2]:
-        tlen.AddEntry(hs[cut],cut,"L")
-        hs[cut].Draw("same")
+        if cut in heffs:
+            tlen.AddEntry(heffs[cut],cut,"L")
+            heffs[cut].Draw("same")
     tlen.Draw()
     canvas[s].SetGridx(1)
     canvas[s].SetGridy(1)     
