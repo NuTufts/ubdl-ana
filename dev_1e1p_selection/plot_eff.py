@@ -1,3 +1,4 @@
+import os,sys
 import ROOT as rt
 rt.gStyle.SetOptStat(0)
 
@@ -24,7 +25,7 @@ selcut_colors = { "fv":rt.kBlack,
                   "allreco":rt.kBlack,
                   "numcuts":rt.kBlack}
 
-rfile = rt.TFile("plots_1e1p_sel.root")
+rfile = rt.TFile(sys.argv[1])
 
 canvas = {}
 hists = []

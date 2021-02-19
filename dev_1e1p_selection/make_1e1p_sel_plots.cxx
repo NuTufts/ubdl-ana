@@ -102,6 +102,20 @@ int main( int nargs, char** argv ) {
         "allreco",
         "numcuts"};
 
+  // Cut variables for studying optimal cuts
+  enum { kdwall=0,
+         kdist2true,
+         kmaxshowerhits,
+         knshowerprongs,
+         kntrackprongs,
+         kllpid,
+         khipfraction,
+         kminshowergap,
+         kmaxshowergap,
+         kmaxtracklen,
+         kvertexact,
+         kNumCutVariables };
+         
   std::vector<std::string> cutvar_names
     = { "dwall",
         "dist2true",
@@ -112,8 +126,9 @@ int main( int nargs, char** argv ) {
         "hipfraction",
         "minshowergap",
         "maxshowergap",
-        "vertexact" };
-  float cutvar_range[10][2] = { {-10,200},  // dwall
+        "maxtracklen",
+        "vertexcharge" };
+  float cutvar_range[11][2] = { {-10,200},  // dwall
                                 {0, 50 },   // distance to true vertex
                                 {0, 2000},  // hits in largest shower
                                 {0, 10},    // num shower prongs
@@ -122,9 +137,10 @@ int main( int nargs, char** argv ) {
                                 {0,1.01},   // hip fraction
                                 {0,50.0},   // minshowergap
                                 {0,50.0},   // maxshowergap
+                                {0,500},    // maxtracklen
                                 {0,150.0}   // vertex activity: charge per pixel around reco vertex
   };
-  int cutvar_nbins[10] = { 210, // dwall
+  int cutvar_nbins[11] = { 210, // dwall
                            150, // dist 2 true
                            100, // hits in largest shower
                            10,  // num shower prongs
@@ -133,6 +149,7 @@ int main( int nargs, char** argv ) {
                            50,  // hip fraction
                            50,  // minshowergap
                            50,  // maxshowergap
+                           500, // maxtracklen
                            50 };// vertex activity
 
   // provides way to decide on remaining VA candidates per event
@@ -188,18 +205,19 @@ int main( int nargs, char** argv ) {
     hdist[i] = new TH1D(ss.str().c_str(),";cm;",500,0,500);
   }
 
-  // number of shower pixels forward: proxy for "reco energy"
+  // number of shower pixels forward: proxy for "reco energy" until we build one
   TH1D* hnshower[nsamples] = {0};
-  for (int i=0; i<nsamples; i++) {
+  TH2D* hshower_vs_evislep[nsamples] = {0};
+  for (int isample=0; isample<nsamples; isample++) {
     std::stringstream ss;
-    ss << "hnshower_" << sample_names[i];
-    hnshower[i] = new TH1D(ss.str().c_str(),";num shower hits;",100,0,5000);
+    ss << "hnshower_" << sample_names[isample];
+    hnshower[isample] = new TH1D(ss.str().c_str(),";num shower hits;",100,0,5000);
   }
-
+                                     
   // cut variables, with truth tag. for study selection power.
   std::vector<TH1D*> hvariable_bad_v( cutvar_names.size(), 0 );
   std::vector<TH1D*> hvariable_good_v( cutvar_names.size(), 0 );  
-  for (int icut=0; icut<kAllCuts; icut++) {
+  for (int icut=0; icut<kNumCutVariables; icut++) {
     std::stringstream ss_bad;
     ss_bad << "hCutVar_" << cutvar_names[icut] << "_bad";
     std::stringstream ss_good;
@@ -222,7 +240,7 @@ int main( int nargs, char** argv ) {
     bool cut_fv = vtx_dwall>10.0;
     
     // find best reco vertex at each cut stage, measured by closeness to true vertex
-    //std::vector<EventDist2True_t> index_by_dist_v;
+    std::vector<EventDist2True_t> index_by_dist_v;
     std::vector<bool> event_passes_cut( kNumCuts, false ); //< indicates if event has a vertex that passes this cut stage
     int nvtx = (int)(*pnu_sel_v).size();
     for (int ivtx=0; ivtx<nvtx; ivtx++) {
@@ -253,16 +271,49 @@ int main( int nargs, char** argv ) {
         event_passes_cut[ icut ] = event_passes_cut[icut] || vtx_seq;
       }
 
-      // if ( vtx_pass[kAllCuts] )
-      //   index_by_dist_v.push_back( idx );
+      if ( vtx_pass[kAllCuts] )
+        index_by_dist_v.push_back( idx );
 
       // for debug
       // std::cout << "[entry " << ientry << ", vtx" << ivtx << "] " << std::endl;
       // for (int i=0; i<=kAllCuts; i++) {
       //   std::cout << "  " << selcut_names[i] << ": " << vtx_pass[i] << std::endl;
       // }
+
+      // Cut variables
+      if ( nusel.dist2truevtx<3.0 ) {
+        
+        hvariable_good_v[kdwall]->Fill( vtx_dwall );
+        hvariable_good_v[kdist2true]->Fill( nusel.dist2truevtx );
+        hvariable_good_v[kmaxshowerhits]->Fill( nusel.max_shower_nhits );
+        hvariable_good_v[knshowerprongs]->Fill( nusel.nshowers );
+        hvariable_good_v[kntrackprongs]->Fill( nusel.ntracks );
+        hvariable_good_v[kllpid]->Fill( nusel.max_proton_pid );
+        hvariable_good_v[khipfraction]->Fill( nusel.vertex_hip_fraction );
+        hvariable_good_v[kminshowergap]->Fill( nusel.min_shower_gap );
+        hvariable_good_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
+        hvariable_good_v[kmaxtracklen]->Fill( nusel.max_track_length );
+        hvariable_good_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );
+        
+      }
+      else {
+
+        hvariable_bad_v[kdwall]->Fill( vtx_dwall );
+        hvariable_bad_v[kdist2true]->Fill( nusel.dist2truevtx );
+        hvariable_bad_v[kmaxshowerhits]->Fill( nusel.max_shower_nhits );
+        hvariable_bad_v[knshowerprongs]->Fill( nusel.nshowers );
+        hvariable_bad_v[kntrackprongs]->Fill( nusel.ntracks );
+        hvariable_bad_v[kllpid]->Fill( nusel.max_proton_pid );
+        hvariable_bad_v[khipfraction]->Fill( nusel.vertex_hip_fraction );
+        hvariable_bad_v[kminshowergap]->Fill( nusel.min_shower_gap );
+        hvariable_bad_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
+        hvariable_bad_v[kmaxtracklen]->Fill( nusel.max_track_length );
+        hvariable_bad_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );
+        
+      }
+      
     }
-    //std::sort( index_by_dist_v.begin(), index_by_dist_v.end() );
+    std::sort( index_by_dist_v.begin(), index_by_dist_v.end() );
 
     // for debug
     // std::cout << "[entry results] ------------" <<  std::endl;
@@ -284,7 +335,7 @@ int main( int nargs, char** argv ) {
       // 1eVA
       if ( is1l0p0pi==1 && evis_had>30.0 ) {
         henu[k1eVA][icut]->Fill( Enu_true );
-        henu_eff[k1eVA][icut]->Fill( Enu_true );        
+        henu_eff[k1eVA][icut]->Fill( Enu_true );
       }
 
       // 1e1p
@@ -296,6 +347,16 @@ int main( int nargs, char** argv ) {
       // All
       henu[kAll][icut]->Fill( Enu_true );
       henu_eff[kAll][icut]->Fill( Enu_true );
+    }
+
+    // nshowerhits: temporary proxy for neutrino energy
+    if ( index_by_dist_v.size()>0 ) {
+      int best_passing_vtx_index = index_by_dist_v.front().index;
+      hnshower[kAll]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );      
+      if ( is1l0p0pi==1 && evis_had>30.0 )
+        hnshower[k1eVA]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );
+      if ( is1l1p0pi==1 ) 
+        hnshower[k1e1p]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );
     }
 
     // std::cout << "[entry] to continue." << std::endl;
