@@ -206,11 +206,11 @@ int main( int nargs, char** argv ) {
     for (int icut=0; icut<kNumCuts; icut++) {
       std::stringstream ss;
       ss << "hEnu_" << sample_names[isample] << "_" << selcut_names[icut] << "cut";
-      henu[isample][icut] = new TH1D(ss.str().c_str(),";true E_{#nu} (MeV)", 300,0,3000);
+      henu[isample][icut] = new TH1D(ss.str().c_str(),";true E_{#nu} (MeV)", 30,0,3000);
 
       std::stringstream sseff;
       sseff << "hEff_" << sample_names[isample] << "_" << selcut_names[icut] << "cut";
-      henu_eff[isample][icut] = new TH1D(sseff.str().c_str(),";true E_{#nu} (MeV)",300,0,3000);
+      henu_eff[isample][icut] = new TH1D(sseff.str().c_str(),";true E_{#nu} (MeV)",30,0,3000);
     }
   }
 
@@ -224,11 +224,20 @@ int main( int nargs, char** argv ) {
 
   // number of shower pixels forward: proxy for "reco energy" until we build one
   TH1D* hnshower[nsamples] = {0};
+  TH2D* hshower_vs_enu[nsamples] = {0};
   TH2D* hshower_vs_evislep[nsamples] = {0};
   for (int isample=0; isample<nsamples; isample++) {
     std::stringstream ss;
     ss << "hnshower_" << sample_names[isample];
-    hnshower[isample] = new TH1D(ss.str().c_str(),";num shower hits;",100,0,5000);
+    hnshower[isample] = new TH1D(ss.str().c_str(),";num shower hits;",100,0,10000);
+
+    std::stringstream ss2d;
+    ss2d << "hnshower_vs_enu_" << sample_names[isample];
+    hshower_vs_enu[isample] = new TH2D(ss2d.str().c_str(), "",30,0,3000,100,0,20000);
+
+    std::stringstream ss_vs_elep;
+    ss_vs_elep << "hnshower_vs_evislep_" << sample_names[isample];
+    hshower_vs_evislep[isample] = new TH2D(ss_vs_elep.str().c_str(), "",150,0,3000,200,0,10000);
   }
                                      
   // cut variables, with truth tag. for study selection power.
@@ -369,13 +378,24 @@ int main( int nargs, char** argv ) {
     // nshowerhits: temporary proxy for neutrino energy
     if ( index_by_dist_v.size()>0 ) {
       int best_passing_vtx_index = index_by_dist_v.front().index;
-      hnshower[kAll]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );      
-      if ( is1l0p0pi==1 && evis_had>30.0 )
-        hnshower[k1eVA]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );
-      if ( is1l1p0pi==1 ) 
+      float num_shr_hits = (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits;
+      hnshower[kAll]->Fill( num_shr_hits );
+      hshower_vs_enu[kAll]->Fill( Enu_true, num_shr_hits );
+      hshower_vs_evislep[kAll]->Fill( evis_lep, num_shr_hits );      
+				 
+      if ( is1l0p0pi==1 && evis_had>30.0 ) {
+        hnshower[k1eVA]->Fill( num_shr_hits );
+	hshower_vs_enu[k1eVA]->Fill( Enu_true, num_shr_hits );
+	hshower_vs_evislep[k1eVA]->Fill( evis_lep, num_shr_hits ); 
+      }
+      
+      if ( is1l1p0pi==1 ) {
         hnshower[k1e1p]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );
+	hshower_vs_enu[k1e1p]->Fill( Enu_true, num_shr_hits );
+	hshower_vs_evislep[k1e1p]->Fill( evis_lep, num_shr_hits ); 	
+      }
     }
-
+    
     // std::cout << "[entry] to continue." << std::endl;
     // std::cin.get();
     
