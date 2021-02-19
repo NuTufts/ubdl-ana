@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include "TFile.h"
 #include "TChain.h"
 #include "TTree.h"
@@ -13,8 +14,24 @@ int main( int nargs, char** argv ) {
 
   std::cout << "Gen-2 1e1p Selection Plots" << std::endl;
 
+  std::ifstream input_list(argv[1]);
+  char zinput[1028];  
+  input_list >> zinput;
+  
+  std::vector<std::string> input_v;
+  do {
+    input_v.push_back( std::string(zinput) );
+    input_list >> zinput;
+  } while ( input_list.good() && !input_list.eof() );
+  
   TChain* in = new TChain("KPSRecoManagerTree");
-  in->Add(argv[1]);
+  int ninputs = 0;
+  for ( auto& finput : input_v ) {
+    in->Add( finput.c_str() );
+    std::cout << finput << std::endl;
+    ninputs++;
+  }
+  std::cout << "number of files loaded: " << ninputs << std::endl;
 
   const float vtx_cutoff  = 5.0;
   const float vtx_cutoff2 = 20.0;
