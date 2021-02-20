@@ -37,13 +37,13 @@ for s in sample_names:
     hs = {}
     heffs = {}
     for cut in selcut_names:
-        h = rfile.Get( "hEnu_%s_%scut"%(s,cut) )
+        h = rfile.Get( "hEnu_%s_%scut_all"%(s,cut) )
         print h
         if h:
             h.SetLineColor( selcut_colors[cut] )
             if cut in ["vertexcand","vertexact","allreco"]:
                 h.SetLineWidth(2)
-            heff = h.Clone("heffnew_%s_%scut"%(s,cut))
+            heff = h.Clone("heffnew_%s_%scut_all"%(s,cut))
             hs[cut] = h
             heffs[cut] = heff
     for cut in selcut_names:
