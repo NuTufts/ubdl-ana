@@ -17,6 +17,8 @@ int main( int nargs, char** argv ) {
   std::ifstream input_list(argv[1]);
   char zinput[1028];  
   input_list >> zinput;
+
+  int is_bnbnu = std::atoi(argv[2]);
   
   std::vector<std::string> input_v;
   do {
@@ -306,6 +308,10 @@ int main( int nargs, char** argv ) {
       else
         event_mode = kNCOther;
     }
+
+    if ( is_bnbnu==1 && abs(nu_pdg)==12 && ccnc==0 )
+      continue; // omit nue-CC events from bnb nu histograms
+      
     
     // find best reco vertex at each cut stage, measured by closeness to true vertex
     std::vector<EventDist2True_t> index_by_dist_v;
@@ -425,23 +431,33 @@ int main( int nargs, char** argv ) {
 
     // nshowerhits: temporary proxy for neutrino energy
     if ( index_by_dist_v.size()>0 ) {
+      // this means event had passing vertex
+      
       int best_passing_vtx_index = index_by_dist_v.front().index;
       float num_shr_hits = (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits;
       hnshower[kAll]->Fill( num_shr_hits );
       hshower_vs_enu[kAll]->Fill( Enu_true, num_shr_hits );
-      hshower_vs_evislep[kAll]->Fill( evis_lep, num_shr_hits );      
+      hshower_vs_evislep[kAll]->Fill( evis_lep, num_shr_hits );
+      henu[kAll][kAllCuts][kAllModes]->Fill( Enu_true );
+      henu[kAll][kAllCuts][event_mode]->Fill( Enu_true );      
 				 
       if ( is1l0p0pi==1 && evis_had>30.0 ) {
         hnshower[k1eVA]->Fill( num_shr_hits );
 	hshower_vs_enu[k1eVA]->Fill( Enu_true, num_shr_hits );
-	hshower_vs_evislep[k1eVA]->Fill( evis_lep, num_shr_hits ); 
+	hshower_vs_evislep[k1eVA]->Fill( evis_lep, num_shr_hits );
+        henu[k1eVA][kAllCuts][kAllModes]->Fill( Enu_true );        
+        henu[k1eVA][kAllCuts][event_mode]->Fill( Enu_true );
       }
       
       if ( is1l1p0pi==1 ) {
         hnshower[k1e1p]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );
 	hshower_vs_enu[k1e1p]->Fill( Enu_true, num_shr_hits );
-	hshower_vs_evislep[k1e1p]->Fill( evis_lep, num_shr_hits ); 	
+	hshower_vs_evislep[k1e1p]->Fill( evis_lep, num_shr_hits );
+        henu[k1e1p][kAllCuts][kAllModes]->Fill( Enu_true );        
+        henu[k1e1p][kAllCuts][event_mode]->Fill( Enu_true );        
       }
+
+      
     }
     
     // std::cout << "[entry] to continue." << std::endl;
