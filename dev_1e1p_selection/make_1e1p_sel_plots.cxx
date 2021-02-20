@@ -45,12 +45,20 @@ int main( int nargs, char** argv ) {
   float evis_had;
   float Enu_true;
   float vtx_dwall;
+  int genie_mode;
+  int interactionType;
+  int ccnc;
+  int nu_pdg;
   in->SetBranchAddress( "Enu_true",  &Enu_true );
   in->SetBranchAddress( "evis_lep",  &evis_lep );  
   in->SetBranchAddress( "evis_had",  &evis_had );
   in->SetBranchAddress( "is1l1p0pi", &is1l1p0pi );
   in->SetBranchAddress( "is1l0p0pi", &is1l0p0pi );
   in->SetBranchAddress( "vtx_dwall", &vtx_dwall );
+  in->SetBranchAddress( "currentType", &ccnc );
+  in->SetBranchAddress( "genieMode", &genie_mode );
+  in->SetBranchAddress( "interactionType", &interactionType );
+  in->SetBranchAddress( "nu_pdg", &nu_pdg );
   
   // Selection variables
   /**
@@ -96,6 +104,18 @@ int main( int nargs, char** argv ) {
                                            "is1l1p0pi==1",
                                            "1==1"};
 
+  // truth modes
+  const int nmodes = 7;
+  enum { kCCQE=0, kCCRes, kCCOther, kNCQE, kNCRes, kNCOther, kAllModes, kNumModes };
+  std::vector<std::string> modename
+    = { "ccqe",
+        "ccres",
+        "ccother",
+        "ncqe",
+        "ncres",
+        "ncother",
+        "all" };
+  
   // cut stages
   enum { kFV=0,           // true vertex in FV (10 cm from TPC boundary), sets baseline for efficiency study
          kVertexCand3cm,  // reco candidate formed within 3 cm of vertex
@@ -200,17 +220,19 @@ int main( int nargs, char** argv ) {
   };
   
   // Efficiency versus Enu
-  TH1D* henu[nsamples][kNumCuts]      = {0};
-  TH1D* henu_eff[nsamples][kNumCuts]  = {0};      
+  TH1D* henu[nsamples][kNumCuts][kNumModes]      = {0};
+  TH1D* henu_eff[nsamples][kNumCuts][kNumModes]  = {0};      
   for (int isample=0; isample<nsamples; isample++) {
     for (int icut=0; icut<kNumCuts; icut++) {
-      std::stringstream ss;
-      ss << "hEnu_" << sample_names[isample] << "_" << selcut_names[icut] << "cut";
-      henu[isample][icut] = new TH1D(ss.str().c_str(),";true E_{#nu} (MeV)", 30,0,3000);
-
-      std::stringstream sseff;
-      sseff << "hEff_" << sample_names[isample] << "_" << selcut_names[icut] << "cut";
-      henu_eff[isample][icut] = new TH1D(sseff.str().c_str(),";true E_{#nu} (MeV)",30,0,3000);
+      for (int imode=0; imode<kNumModes; imode++) {
+        std::stringstream ss;
+        ss << "hEnu_" << sample_names[isample] << "_" << selcut_names[icut] << "cut" << "_" << modename[imode];
+        henu[isample][icut][imode] = new TH1D(ss.str().c_str(),";true E_{#nu} (MeV)", 30,0,3000);
+        
+        std::stringstream sseff;
+        sseff << "hEff_" << sample_names[isample] << "_" << selcut_names[icut] << "cut" << "_" << modename[imode];
+        henu_eff[isample][icut][imode] = new TH1D(sseff.str().c_str(),";true E_{#nu} (MeV)",30,0,3000);
+      }
     }
   }
 
@@ -264,6 +286,26 @@ int main( int nargs, char** argv ) {
 
     // truth cuts
     bool cut_fv = vtx_dwall>10.0;
+
+    // which mode are we
+    int event_mode = 0;
+    if ( ccnc==0 ) {
+      // charged current
+      if ( interactionType==1001 )
+        event_mode = kCCQE;
+      else if (  interactionType>=1003 && interactionType<=1090 )
+        event_mode = kCCRes;
+      else
+        event_mode = kCCOther;
+    }
+    else {
+      if ( interactionType==1002 )
+        event_mode = kNCQE;
+      else if (  interactionType>=1003 && interactionType<=1090 )
+        event_mode = kNCRes;
+      else
+        event_mode = kNCOther;
+    }
     
     // find best reco vertex at each cut stage, measured by closeness to true vertex
     std::vector<EventDist2True_t> index_by_dist_v;
@@ -360,19 +402,25 @@ int main( int nargs, char** argv ) {
 
       // 1eVA
       if ( is1l0p0pi==1 && evis_had>30.0 ) {
-        henu[k1eVA][icut]->Fill( Enu_true );
-        henu_eff[k1eVA][icut]->Fill( Enu_true );
+        henu[k1eVA][icut][kAllModes]->Fill( Enu_true );
+        henu_eff[k1eVA][icut][kAllModes]->Fill( Enu_true );
+        henu[k1eVA][icut][event_mode]->Fill( Enu_true );
+        henu_eff[k1eVA][icut][event_mode]->Fill( Enu_true );        
       }
 
       // 1e1p
       if ( is1l1p0pi==1 ) {
-        henu[k1e1p][icut]->Fill( Enu_true );
-        henu_eff[k1e1p][icut]->Fill( Enu_true );
+        henu[k1e1p][icut][kAllModes]->Fill( Enu_true );
+        henu_eff[k1e1p][icut][kAllModes]->Fill( Enu_true );
+        henu[k1e1p][icut][event_mode]->Fill( Enu_true );
+        henu_eff[k1e1p][icut][event_mode]->Fill( Enu_true );                
       }
 
       // All
-      henu[kAll][icut]->Fill( Enu_true );
-      henu_eff[kAll][icut]->Fill( Enu_true );
+      henu[kAll][icut][kAllModes]->Fill( Enu_true );
+      henu_eff[kAll][icut][kAllModes]->Fill( Enu_true );
+      henu[kAll][icut][event_mode]->Fill( Enu_true );
+      henu_eff[kAll][icut][event_mode]->Fill( Enu_true );                      
     }
 
     // nshowerhits: temporary proxy for neutrino energy
@@ -404,7 +452,7 @@ int main( int nargs, char** argv ) {
   // efficiency
   for (int i=0; i<nsamples; i++) {
     for (int j=0; j<kAllCuts; j++) {
-      henu_eff[i][j]->Divide( henu[i][kFV] );
+      henu_eff[i][j][kAllModes]->Divide( henu[i][kFV][kAllModes] );
     }
   }
   
