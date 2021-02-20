@@ -4,6 +4,7 @@ OFFSET=$1
 STRIDE=$2
 SAMPLE_NAME=$3
 INPUTLIST=$4
+ISBNBNU=$5
 
 INPUTSTEM=larflowreco
 
@@ -69,13 +70,14 @@ for ((i=0;i<${STRIDE};i++)); do
 
 done
 
-make_1e1p_sel_plots input.list >> ${local_logfile} 2>&1
+make_1e1p_sel_plots input.list $ISBNBNU >> ${local_logfile} 2>&1
 mv plots_1e1p_sel.root $outfile
 outlist=`printf input_${SAMPLE_NAME}_%03d.list ${SLURM_ARRAY_TASK_ID}`
 mv input.list $outlist
 
 cp $outfile $OUTPUT_DIR/
 cp $outlist $OUTPUT_DIR/
+cp $local_logfile ${OUTPUT_LOGDIR}/
 
 # clean-up
 cd /tmp
