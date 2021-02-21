@@ -2,14 +2,14 @@ import os,sys
 import ROOT as rt
 rt.gStyle.SetOptStat(0)
 
-#pot = 4.5e19
-pot = 2e20
+pot = 4.5e19
+#pot = 2e20
 
 ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_merged.root",
           "intrinsicnue":"plots_1e1p_sel_intrinsic_merged.root"}
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
-fpot = {"bnbnu":5.112648436e+19,
+fpot = {"bnbnu":1.2495750974e+20,#5.112648436e+19,
         "intrinsicnue":4.613240272e+22}
 fill_order = ["intrinsicnue","bnbnu"]
 #fill_order = ["bnbnu"]
