@@ -117,6 +117,17 @@ int main( int nargs, char** argv ) {
         "ncres",
         "ncother",
         "all" };
+
+  // true reco state
+  enum { kOnVertex=0, //on nu + within 3 cm of true vertex
+         kOnNu, // on nu + > 3 cm of true vertex
+         kOffNu, // not on nu pixels
+         kNumRecoStatus
+  };
+  std::vector<std::string> reco_status_names
+    = {"onvtx",
+       "offvtxnu",
+       "offvtxcosmic"};
   
   // cut stages
   enum { kFV=0,           // true vertex in FV (10 cm from TPC boundary), sets baseline for efficiency study
@@ -266,7 +277,7 @@ int main( int nargs, char** argv ) {
                                      
   // cut variables, with truth tag. for study selection power.
   std::vector<TH1D*> hvariable_bad_v( cutvar_names.size(), 0 );
-  std::vector<TH1D*> hvariable_good_v( cutvar_names.size(), 0 );  
+  std::vector<TH1D*> hvariable_good_v( cutvar_names.size(), 0 );
   for (int icut=0; icut<kNumCutVariables; icut++) {
     std::stringstream ss_bad;
     ss_bad << "hCutVar_" << cutvar_names[icut] << "_bad";
@@ -275,9 +286,22 @@ int main( int nargs, char** argv ) {
     hvariable_bad_v[icut]  = new TH1D(ss_bad.str().c_str(),"",
                                       cutvar_nbins[icut], cutvar_range[icut][0], cutvar_range[icut][1] );
     hvariable_good_v[icut] = new TH1D(ss_good.str().c_str(),";",
-                                      cutvar_nbins[icut], cutvar_range[icut][0], cutvar_range[icut][1] );                                      
+                                      cutvar_nbins[icut], cutvar_range[icut][0], cutvar_range[icut][1] );
+
   }
-    
+  
+  // plot cut variables that currently pass all cut, to see if on-nu or off-nu
+  // this is to inform directions for reco improvement
+  TH1D* hvar_onnu[kNumRecoStatus][kNumCutVariables] = {0};
+  for (int icut=0; icut<kNumCutVariables; icut++) {  
+    for (int istat=0; istat<(int)kNumRecoStatus; istat++) {
+      std::stringstream ss;
+      ss << "hCutVar_" << cutvar_names[icut] << "_" << reco_status_names[istat];
+      hvar_onnu[istat][icut] = new TH1D(ss.str().c_str(),"", cutvar_nbins[icut],
+                                        cutvar_range[icut][0], cutvar_range[icut][1] );
+    }
+  }
+  
   for (int ientry=0; ientry<nentries; ientry++) {
   //for (int ientry=0; ientry<100; ientry++) {  
 
@@ -354,7 +378,7 @@ int main( int nargs, char** argv ) {
       //   std::cout << "  " << selcut_names[i] << ": " << vtx_pass[i] << std::endl;
       // }
 
-      // Cut variables
+      // Cut variables: study between "good" or "bad" vertex
       if ( nusel.dist2truevtx<3.0 ) {
         
         hvariable_good_v[kdwall]->Fill( vtx_dwall );
@@ -384,6 +408,34 @@ int main( int nargs, char** argv ) {
         hvariable_bad_v[kmaxtracklen]->Fill( nusel.max_track_length );
         hvariable_bad_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );
         
+      }
+
+      // Cut variables: study correlation between reco state:
+      // on vertex, off-vertex nu, off-vertex cosmic
+      // determine state
+      int vtx_reco_state = 0;
+      if ( nusel.dist2truevtx<3.0 ) {
+        vtx_reco_state  = (int)kOnVertex;
+      }
+      else {
+        if ( nusel.truth_vtxFracNu>0.65 )
+          vtx_reco_state = (int)kOnNu;
+        else
+          vtx_reco_state = (int)kOffNu;
+      }
+
+      if ( vtx_pass[kAllCuts] ) {
+        hvar_onnu[vtx_reco_state][kdwall]->Fill( vtx_dwall );
+        hvar_onnu[vtx_reco_state][kdist2true]->Fill( nusel.dist2truevtx );
+        hvar_onnu[vtx_reco_state][kmaxshowerhits]->Fill( nusel.max_shower_nhits );
+        hvar_onnu[vtx_reco_state][knshowerprongs]->Fill( nusel.nshowers );
+        hvar_onnu[vtx_reco_state][kntrackprongs]->Fill( nusel.ntracks );
+        hvar_onnu[vtx_reco_state][kllpid]->Fill( nusel.max_proton_pid );
+        hvar_onnu[vtx_reco_state][khipfraction]->Fill( nusel.vertex_hip_fraction );
+        hvar_onnu[vtx_reco_state][kminshowergap]->Fill( nusel.min_shower_gap );
+        hvar_onnu[vtx_reco_state][kmaxshowergap]->Fill( nusel.max_shower_gap );
+        hvar_onnu[vtx_reco_state][kmaxtracklen]->Fill( nusel.max_track_length );
+        hvar_onnu[vtx_reco_state][kvertexact]->Fill( nusel.vertex_charge_per_pixel );
       }
       
     }
