@@ -19,6 +19,8 @@ int main( int nargs, char** argv ) {
   input_list >> zinput;
 
   int is_bnbnu = std::atoi(argv[2]);
+
+  bool DEBUG = false;
   
   std::vector<std::string> input_v;
   do {
@@ -130,27 +132,29 @@ int main( int nargs, char** argv ) {
        "offvtxcosmic"};
   
   // cut stages
-  enum { kFV=0,           // true vertex in FV (10 cm from TPC boundary), sets baseline for efficiency study
-         kVertexCand3cm,  // reco candidate formed within 3 cm of vertex
-         kMinShowerSize,  // min shower size cut
-         kNShowerProngs,  // number of shower prongs
-         kNTrackProngs,   // number of track prongs         
-         kHadronic,       // see hadronic particles (proton or vertex activity)
-         kShowerGap,      // shower gap
-         kVertexAct,      // vertex activity cut
-         kAllCuts,        // All cuts applied except FV -- represents reco pass rate
-         kNumCuts };      // Number in enum
+  enum { kFV=0,           // [0] true vertex in FV (10 cm from TPC boundary), sets baseline for efficiency study
+         kVertexCand3cm,  // [1] reco candidate formed within 3 cm of vertex
+         kMinShowerSize,  // [2] min shower size cut
+         kNShowerProngs,  // [3] number of shower prongs
+         kNTrackProngs,   // [4] number of track prongs         
+         kHadronic,       // [5] see hadronic particles (proton or vertex activity)
+         kShowerGap,      // [6] shower gap
+         kVertexAct,      // [7] vertex activity cut
+         kShowerLLCut,    // [8] shower likelihood cut
+         kAllCuts,        // [9] All cuts applied except FV -- represents reco pass rate
+         kNumCuts };      // [10] Number in enum
   std::vector<std::string> selcut_names
-    = { "fv",
-        "vertexcand",
-        "minshower",
-        "nshowerprongs",
-        "ntrackprongs",        
-        "hadronic",
-        "showergap",
-        "vertexact",
-        "allreco",
-        "numcuts"};
+    = { "fv",             // [0]
+        "vertexcand",     // [1]
+        "minshower",      // [2]
+        "nshowerprongs",  // [3]
+        "ntrackprongs",   // [4]
+        "hadronic",       // [5]
+        "showergap",      // [6]
+        "vertexact",      // [7]
+        "showerll",       // [8]
+        "allreco",        // [9]
+        "numcuts"};       // [10]
 
   // Cut variables for studying optimal cuts
   enum { kdwall=0,
@@ -164,21 +168,30 @@ int main( int nargs, char** argv ) {
          kmaxshowergap,
          kmaxtracklen,
          kvertexact,
+         klargestshowerll,
+         kclosestshowerll,
+         klargestshoweravedqdx,
+         kclosestshoweravedqdx,
          kNumCutVariables };
          
   std::vector<std::string> cutvar_names
-    = { "dwall",
+    = { "dwall", //0
         "dist2true",
         "nmaxshowerhits",
         "nshowerprongs",
-        "ntrackprongs",
-        "llpid",
+        "ntrackprongs", 
+        "llpid", //5
         "hipfraction",
         "minshowergap",
         "maxshowergap",
         "maxtracklen",
-        "vertexcharge" };
-  float cutvar_range[11][2] = { {-10,200},  // dwall
+        "vertexcharge", //10
+        "largestshowerll",
+        "closestshowerll",
+        "largestshoweravedqdx",
+        "closestshoweravedqdx" //14
+  };
+  float cutvar_range[15][2] = { {-10,200},  // dwall
                                 {0, 50 },   // distance to true vertex
                                 {0, 2000},  // hits in largest shower
                                 {0, 10},    // num shower prongs
@@ -188,9 +201,13 @@ int main( int nargs, char** argv ) {
                                 {0,50.0},   // minshowergap
                                 {0,50.0},   // maxshowergap
                                 {0,500},    // maxtracklen
-                                {0,150.0}   // vertex activity: charge per pixel around reco vertex
+                                {0,150.0},  // vertex activity: charge per pixel around reco vertex
+                                {-50,110},  // largest shower likelihood
+                                {-50,110},    // largest shower ave dqdx
+                                {0,200},  // closest shower likelihood
+                                {0,200}     // closest shower ave dqdx
   };
-  int cutvar_nbins[11] = { 210, // dwall
+  int cutvar_nbins[15] = { 210, // dwall
                            150, // dist 2 true
                            100, // hits in largest shower
                            10,  // num shower prongs
@@ -200,7 +217,12 @@ int main( int nargs, char** argv ) {
                            50,  // minshowergap
                            50,  // maxshowergap
                            500, // maxtracklen
-                           50 };// vertex activity
+                           50,  // vertex activity
+                           161, // largest shower likelihood
+                           161, // largest shower ave dqdx
+                           100, // closest shower likelihood
+                           100  // closest shower ave dqdx
+  };
 
   // provides way to decide on remaining VA candidates per event
   // sort on shower-likelihood
@@ -357,15 +379,18 @@ int main( int nargs, char** argv ) {
       vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5);
       vtx_pass[kShowerGap]     = (nusel.min_shower_gap<5.0 && nusel.max_shower_gap<5.0);
       vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0);
+      vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 );
       vtx_pass[kAllCuts]       = true;
 
       // reco variable cuts only
-      for ( int i=kMinShowerSize; i<=kVertexAct; i++) 
+      for ( int i=kMinShowerSize; i<=kShowerLLCut; i++)
         vtx_pass[kAllCuts] = vtx_pass[kAllCuts] && vtx_pass[i];
 
       bool vtx_seq = true;
       for (int icut=0; icut<kNumCuts; icut++) {
-        vtx_seq = vtx_seq && vtx_pass[icut];
+        vtx_seq = vtx_seq && vtx_pass[icut]; // follows sequence
+        // if still true mark as passing
+        // or if previously passed, another vertex had passed this stage
         event_passes_cut[ icut ] = event_passes_cut[icut] || vtx_seq;
       }
 
@@ -373,13 +398,17 @@ int main( int nargs, char** argv ) {
         index_by_dist_v.push_back( idx );
 
       // for debug
-      // std::cout << "[entry " << ientry << ", vtx" << ivtx << "] " << std::endl;
-      // for (int i=0; i<=kAllCuts; i++) {
-      //   std::cout << "  " << selcut_names[i] << ": " << vtx_pass[i] << std::endl;
-      // }
+      if (DEBUG) {
+        std::cout << "[entry " << ientry << ", vtx" << ivtx << "] " << std::endl;
+        vtx_seq = true;
+        for (int i=0; i<=kAllCuts; i++) {
+          vtx_seq = vtx_seq && vtx_pass[i]; // follows sequence        
+          std::cout << "  " << selcut_names[i] << ": this=" << vtx_pass[i] << " chain=" << vtx_seq << std::endl;
+        }
+      }
 
       // Cut variables: study between "good" or "bad" vertex
-      if ( nusel.dist2truevtx<3.0 ) {
+      if ( nusel.dist2truevtx<2.0 ) {
         
         hvariable_good_v[kdwall]->Fill( vtx_dwall );
         hvariable_good_v[kdist2true]->Fill( nusel.dist2truevtx );
@@ -391,7 +420,11 @@ int main( int nargs, char** argv ) {
         hvariable_good_v[kminshowergap]->Fill( nusel.min_shower_gap );
         hvariable_good_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
         hvariable_good_v[kmaxtracklen]->Fill( nusel.max_track_length );
-        hvariable_good_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );
+        hvariable_good_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );        
+        hvariable_good_v[klargestshowerll]->Fill( nusel.largest_shower_ll );
+        hvariable_good_v[klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
+        hvariable_good_v[kclosestshowerll]->Fill( nusel.closest_shower_ll );
+        hvariable_good_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
         
       }
       else {
@@ -407,7 +440,10 @@ int main( int nargs, char** argv ) {
         hvariable_bad_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
         hvariable_bad_v[kmaxtracklen]->Fill( nusel.max_track_length );
         hvariable_bad_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );
-        
+        hvariable_bad_v[klargestshowerll]->Fill( nusel.largest_shower_ll );
+        hvariable_bad_v[klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
+        hvariable_bad_v[kclosestshowerll]->Fill( nusel.closest_shower_ll );
+        hvariable_bad_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );                
       }
 
       // Cut variables: study correlation between reco state:
@@ -436,23 +472,31 @@ int main( int nargs, char** argv ) {
         hvar_onnu[vtx_reco_state][kmaxshowergap]->Fill( nusel.max_shower_gap );
         hvar_onnu[vtx_reco_state][kmaxtracklen]->Fill( nusel.max_track_length );
         hvar_onnu[vtx_reco_state][kvertexact]->Fill( nusel.vertex_charge_per_pixel );
+        hvar_onnu[vtx_reco_state][klargestshowerll]->Fill( nusel.largest_shower_ll );
+        hvar_onnu[vtx_reco_state][klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
+        hvar_onnu[vtx_reco_state][kclosestshowerll]->Fill( nusel.closest_shower_ll );
+        hvar_onnu[vtx_reco_state][kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );                
       }
       
     }
     std::sort( index_by_dist_v.begin(), index_by_dist_v.end() );
 
     // for debug
-    // std::cout << "[entry results] ------------" <<  std::endl;
-    // for (int i=0; i<=kAllCuts; i++) {
-    //   std::cout << "  " << selcut_names[i] << ": " << event_passes_cut[i] << std::endl;
-    // }
-    // std::cout << "----------------------------" << std::endl;
+    if ( DEBUG) {
+      std::cout << "[entry results] ------------" <<  std::endl;
+      for (int i=0; i<=kAllCuts; i++) {
+        std::cout << "  " << selcut_names[i] << ": " << event_passes_cut[i] << std::endl;
+      }
+      std::cout << "----------------------------" << std::endl;
+      std::cout << "[ENTER] to continue" << std::endl;
+      std::cin.get();
+    }
     
     // Event-based plots
 
     // Enu filled based on if vertex passes cut stage
     bool still_passing = true;
-    for (int icut=0; icut<=(int)kVertexAct; icut++) {
+    for (int icut=0; icut<=(int)kAllCuts; icut++) {
       still_passing = still_passing & event_passes_cut[icut];
 
       if ( !still_passing )

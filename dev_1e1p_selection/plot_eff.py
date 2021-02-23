@@ -13,6 +13,7 @@ selcut_names  = [ "fv",
                   "hadronic",
                   "showergap",
                   "vertexact",
+                  "showerll",
                   "allreco",
                   "numcuts"]
 selcut_colors = { "fv":rt.kBlack,
@@ -22,7 +23,8 @@ selcut_colors = { "fv":rt.kBlack,
                   "ntrackprongs":rt.kOrange-3,
                   "hadronic":rt.kMagenta-2,
                   "showergap":rt.kOrange+4,
-                  "vertexact":rt.kRed,
+                  "vertexact":rt.kMagenta+3,
+                  "showerll":rt.kRed,
                   "allreco":rt.kBlack,
                   "numcuts":rt.kBlack}
 
@@ -38,10 +40,10 @@ for s in sample_names:
     heffs = {}
     for cut in selcut_names:
         h = rfile.Get( "hEnu_%s_%scut_all"%(s,cut) )
-        print h
         if h:
+            print h.GetName(),": ",h.Integral()            
             h.SetLineColor( selcut_colors[cut] )
-            if cut in ["vertexcand","vertexact","allreco"]:
+            if cut in ["vertexcand","showerll","allreco"]:
                 h.SetLineWidth(2)
             heff = h.Clone("heffnew_%s_%scut_all"%(s,cut))
             hs[cut] = h
