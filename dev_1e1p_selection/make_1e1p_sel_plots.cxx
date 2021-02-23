@@ -377,7 +377,7 @@ int main( int nargs, char** argv ) {
       vtx_pass[kNShowerProngs] = ( nusel.nshowers>0 && nusel.nshowers<=2 );
       vtx_pass[kNTrackProngs]  = ( nusel.ntracks<=2 );
       vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5);
-      vtx_pass[kShowerGap]     = (nusel.min_shower_gap<5.0 && nusel.max_shower_gap<5.0);
+      vtx_pass[kShowerGap]     = (nusel.min_shower_gap<2.0 && nusel.max_shower_gap<2.0);
       vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0);
       vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 );
       vtx_pass[kAllCuts]       = true;
