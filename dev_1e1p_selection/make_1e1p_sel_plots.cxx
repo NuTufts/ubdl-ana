@@ -144,12 +144,13 @@ int main( int nargs, char** argv ) {
          kNTrackProngs,   // [4] number of track prongs         
          kHadronic,       // [5] see hadronic particles (proton or vertex activity)
          kShowerGap,      // [6] shower gap
-         kVertexAct,      // [7] vertex activity cut
-         kShowerLLCut,    // [8] shower likelihood cut
-         kRecoFV,         // [9] reco fv cut
-         kWCPixel,        // [10] Wire-Cell pixel cut 
-         kAllCuts,        // [11] All cuts applied except FV -- represents reco pass rate
-         kNumCuts };      // [12] Number in enum
+         kTrackGap,       // [7] track gap
+         kVertexAct,      // [8] vertex activity cut
+         kShowerLLCut,    // [9] shower likelihood cut
+         kRecoFV,         // [10] reco fv cut
+         kWCPixel,        // [11] Wire-Cell pixel cut 
+         kAllCuts,        // [12] All cuts applied except FV -- represents reco pass rate
+         kNumCuts };      // [13] Number in enum
   std::vector<std::string> selcut_names
     = { "fv",             // [0]
         "vertexcand",     // [1]
@@ -158,12 +159,13 @@ int main( int nargs, char** argv ) {
         "ntrackprongs",   // [4]
         "hadronic",       // [5]
         "showergap",      // [6]
-        "vertexact",      // [7]
-        "showerll",       // [8]
-        "recofv",         // [9]
-        "wcpixel",        // [10]
-        "allreco",        // [11]
-        "numcuts"};       // [12]
+        "trackgap",       // [7]
+        "vertexact",      // [8]
+        "showerll",       // [9]
+        "recofv",         // [10]
+        "wcpixel",        // [11]
+        "allreco",        // [12]
+        "numcuts"};       // [13]
 
   // Cut variables for studying optimal cuts
   enum { kdwall=0, // [0]
@@ -410,6 +412,7 @@ int main( int nargs, char** argv ) {
       vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5);
       //vtx_pass[kShowerGap]     = (nusel.min_shower_gap<2.0 && nusel.max_shower_gap<2.0);
       vtx_pass[kShowerGap]     = nusel.nplanes_connected>=2;
+      vtx_pass[kTrackGap]      = (nusel.ntracks==0 || nusel.min_track_gap<3.0);
       vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0);
       vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 );
       vtx_pass[kRecoFV]        = (reco_dwall>5.0);
