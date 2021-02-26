@@ -14,6 +14,7 @@ selcut_names  = [ "fv",
                   "showergap",
                   "vertexact",
                   "showerll",
+                  #"recofv",
                   "allreco",
                   "numcuts"]
 selcut_colors = { "fv":rt.kBlack,
@@ -25,6 +26,7 @@ selcut_colors = { "fv":rt.kBlack,
                   "showergap":rt.kOrange+4,
                   "vertexact":rt.kMagenta+3,
                   "showerll":rt.kRed,
+                  "recofv":rt.kBlack,   
                   "allreco":rt.kBlack,
                   "numcuts":rt.kBlack}
 
@@ -43,7 +45,9 @@ for s in sample_names:
         if h:
             print h.GetName(),": ",h.Integral()            
             h.SetLineColor( selcut_colors[cut] )
-            if cut in ["vertexcand","showerll","allreco"]:
+            if cut in ["vertexcand","showerll","hadronic","allreco"]:
+                h.SetLineWidth(4)
+            else:
                 h.SetLineWidth(2)
             heff = h.Clone("heffnew_%s_%scut_all"%(s,cut))
             hs[cut] = h

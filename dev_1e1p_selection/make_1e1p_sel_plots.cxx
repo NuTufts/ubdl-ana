@@ -9,6 +9,8 @@
 #include "TH2D.h"
 
 #include "larflow/Reco/NuSelectionVariables.h"
+#include "larflow/Reco/NuVertexCandidate.h"
+#include "ublarcvapp/ubdllee/dwall.h"
 
 int main( int nargs, char** argv ) {
 
@@ -82,6 +84,7 @@ int main( int nargs, char** argv ) {
   // float max_track_length;
   // float vertex_charge_per_pixel;
   std::vector< larflow::reco::NuSelectionVariables >* pnu_sel_v = nullptr;
+  std::vector< larflow::reco::NuVertexCandidate >* pnu_fitted_v = nullptr;  
   
   // good ol' c++ boilerplate
   // in->SetBranchAddress( "max_shower_nhits", &max_shower_nhits );
@@ -93,7 +96,9 @@ int main( int nargs, char** argv ) {
   // in->SetBranchAddress( "max_shower_gap", &max_shower_gap );
   // in->SetBranchAddress( "max_track_length", &max_track_length );
   // in->SetBranchAddress( "vertex_charge_per_pixel", &vertex_charge_per_pixel );
-  in->SetBranchAddress( "nu_sel_v", &pnu_sel_v ); ///< selection variables per vertex
+
+  in->SetBranchAddress( "nu_sel_v",   &pnu_sel_v );    ///< selection variables per vertex
+  in->SetBranchAddress( "nufitted_v", &pnu_fitted_v ); ///< reconstruction objects per vertex
 
   
   int nentries = in->GetEntries();
@@ -141,8 +146,10 @@ int main( int nargs, char** argv ) {
          kShowerGap,      // [6] shower gap
          kVertexAct,      // [7] vertex activity cut
          kShowerLLCut,    // [8] shower likelihood cut
-         kAllCuts,        // [9] All cuts applied except FV -- represents reco pass rate
-         kNumCuts };      // [10] Number in enum
+         kRecoFV,         // [9] reco fv cut
+         kWCPixel,        // [10] Wire-Cell pixel cut 
+         kAllCuts,        // [11] All cuts applied except FV -- represents reco pass rate
+         kNumCuts };      // [12] Number in enum
   std::vector<std::string> selcut_names
     = { "fv",             // [0]
         "vertexcand",     // [1]
@@ -153,26 +160,30 @@ int main( int nargs, char** argv ) {
         "showergap",      // [6]
         "vertexact",      // [7]
         "showerll",       // [8]
-        "allreco",        // [9]
-        "numcuts"};       // [10]
+        "recofv",         // [9]
+        "wcpixel",        // [10]
+        "allreco",        // [11]
+        "numcuts"};       // [12]
 
   // Cut variables for studying optimal cuts
-  enum { kdwall=0,
-         kdist2true,
-         kmaxshowerhits,
-         knshowerprongs,
-         kntrackprongs,
-         kllpid,
-         khipfraction,
-         kminshowergap,
-         kmaxshowergap,
-         kmaxtracklen,
-         kvertexact,
-         klargestshowerll,
-         kclosestshowerll,
-         klargestshoweravedqdx,
-         kclosestshoweravedqdx,
-         kNumCutVariables };
+  enum { kdwall=0, // [0]
+         kdist2true,  // [1]
+         kmaxshowerhits,  // [2]
+         knshowerprongs,  // [3]
+         kntrackprongs,   // [4]
+         kllpid,          // [5]
+         khipfraction,    // [6]
+         kminshowergap,   // [7]
+         kmaxshowergap,   // [8]
+         kmaxtracklen,    // [9]
+         kvertexact,      // [10]
+         klargestshowerll, // [11]
+         kclosestshowerll, // [12]
+         klargestshoweravedqdx, // [13]
+         kclosestshoweravedqdx, // [14]
+         knplanesconnected,      // [15]
+         kminconnectpass,        // [16]
+         kNumCutVariables };    // [17]         
          
   std::vector<std::string> cutvar_names
     = { "dwall", //0
@@ -189,9 +200,11 @@ int main( int nargs, char** argv ) {
         "largestshowerll",
         "closestshowerll",
         "largestshoweravedqdx",
-        "closestshoweravedqdx" //14
+        "closestshoweravedqdx", //14
+        "nplanesconnected",
+        "minconnectpass" // [16]
   };
-  float cutvar_range[15][2] = { {-10,200},  // dwall
+  float cutvar_range[17][2] = { {-10,200},  // dwall
                                 {0, 50 },   // distance to true vertex
                                 {0, 2000},  // hits in largest shower
                                 {0, 10},    // num shower prongs
@@ -205,24 +218,36 @@ int main( int nargs, char** argv ) {
                                 {-50,110},  // largest shower likelihood
                                 {-50,110},    // largest shower ave dqdx
                                 {0,200},  // closest shower likelihood
-                                {0,200}     // closest shower ave dqdx
+                                {0,200},     // closest shower ave dqdx
+                                {0,4},      // num connected planes
+                                {0,4}       // num connected planes
   };
-  int cutvar_nbins[15] = { 210, // dwall
-                           150, // dist 2 true
-                           100, // hits in largest shower
-                           10,  // num shower prongs
-                           10,  // num track prongs
-                           200, // proton likelihood
-                           50,  // hip fraction
-                           50,  // minshowergap
-                           50,  // maxshowergap
-                           500, // maxtracklen
-                           50,  // vertex activity
-                           161, // largest shower likelihood
-                           161, // largest shower ave dqdx
-                           100, // closest shower likelihood
-                           100  // closest shower ave dqdx
+  int cutvar_nbins[17] = { 210, // [0] dwall
+                           150, // [1] dist 2 true
+                           100, // [2] hits in largest shower
+                           10,  // [3] num shower prongs
+                           10,  // [4] num track prongs
+                           200, // [5] proton likelihood
+                           50,  // [6] hip fraction
+                           50,  // [7] minshowergap
+                           50,  // [8] maxshowergap
+                           500, // [9] maxtracklen
+                           50,  // [10] vertex activity
+                           161, // [11] largest shower likelihood
+                           161, // [12] largest shower ave dqdx
+                           100, // [13] closest shower likelihood
+                           100, // [14] closest shower ave dqdx
+                           4,   // [15] nplanes connected
+                           4    // [16] min connected pass among planes
   };
+
+  // dq/dx plots: we will fill for vtx that passes vertex activity cuts
+  // TH2D* hdqdx_shower_good = new TH2D("hdqdx_shower_good","",
+  //                                    200, 0, 10.0,
+  //                                    300, 0, 300.0 );
+  // TH2D* hdqdx_shower_bad  = new TH2D("hdqdx_shower_bad","",
+  //                                    200, 0, 10.0,
+  //                                    300, 0, 300.0 );
 
   // provides way to decide on remaining VA candidates per event
   // sort on shower-likelihood
@@ -312,7 +337,9 @@ int main( int nargs, char** argv ) {
 
   }
   
-  // plot cut variables that currently pass all cut, to see if on-nu or off-nu
+  // plot cut variables for
+  //  (1) currently pass all cut,
+  // w/ break down to see if on-nu or off-nu
   // this is to inform directions for reco improvement
   TH1D* hvar_onnu[kNumRecoStatus][kNumCutVariables] = {0};
   for (int icut=0; icut<kNumCutVariables; icut++) {  
@@ -325,7 +352,6 @@ int main( int nargs, char** argv ) {
   }
   
   for (int ientry=0; ientry<nentries; ientry++) {
-  //for (int ientry=0; ientry<100; ientry++) {  
 
     if ( ientry%100==0 )
       std::cout << "[ ENTRY " << ientry << "]" << std::endl;
@@ -366,8 +392,13 @@ int main( int nargs, char** argv ) {
     for (int ivtx=0; ivtx<nvtx; ivtx++) {
 
       auto const& nusel = (*pnu_sel_v)[ivtx];
+      auto const& nuvtx = (*pnu_fitted_v)[ivtx];
 
       EventDist2True_t idx( nusel.dist2truevtx, ivtx );
+
+      // dwall-reco
+      int reco_boundary = 0;
+      float reco_dwall = ublarcvapp::dwall( nuvtx.pos, reco_boundary );
 
       // selection cuts
       std::vector<bool> vtx_pass( kNumCuts, false );
@@ -377,13 +408,16 @@ int main( int nargs, char** argv ) {
       vtx_pass[kNShowerProngs] = ( nusel.nshowers>0 && nusel.nshowers<=2 );
       vtx_pass[kNTrackProngs]  = ( nusel.ntracks<=2 );
       vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5);
-      vtx_pass[kShowerGap]     = (nusel.min_shower_gap<2.0 && nusel.max_shower_gap<2.0);
+      //vtx_pass[kShowerGap]     = (nusel.min_shower_gap<2.0 && nusel.max_shower_gap<2.0);
+      vtx_pass[kShowerGap]     = nusel.nplanes_connected>=2;
       vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0);
       vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 );
+      vtx_pass[kRecoFV]        = (reco_dwall>5.0);
+      vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic>0.5);
       vtx_pass[kAllCuts]       = true;
 
       // reco variable cuts only
-      for ( int i=kMinShowerSize; i<=kShowerLLCut; i++)
+      for ( int i=kMinShowerSize; i<kAllCuts; i++)
         vtx_pass[kAllCuts] = vtx_pass[kAllCuts] && vtx_pass[i];
 
       bool vtx_seq = true;
@@ -407,6 +441,12 @@ int main( int nargs, char** argv ) {
         }
       }
 
+      int min_connected_pass = 3;
+      for (int p=0; p<(int)nusel.plane_connected_on_pass.size(); p++) {
+        if ( nusel.plane_connected_on_pass[p]>0 && nusel.plane_connected_on_pass[p]<min_connected_pass )
+          min_connected_pass = nusel.plane_connected_on_pass[p];
+      }
+
       // Cut variables: study between "good" or "bad" vertex
       if ( nusel.dist2truevtx<2.0 ) {
         
@@ -425,10 +465,11 @@ int main( int nargs, char** argv ) {
         hvariable_good_v[klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
         hvariable_good_v[kclosestshowerll]->Fill( nusel.closest_shower_ll );
         hvariable_good_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
-        
+        hvariable_good_v[knplanesconnected]->Fill( nusel.nplanes_connected );
+        hvariable_good_v[kminconnectpass]->Fill( min_connected_pass );
       }
       else {
-
+        
         hvariable_bad_v[kdwall]->Fill( vtx_dwall );
         hvariable_bad_v[kdist2true]->Fill( nusel.dist2truevtx );
         hvariable_bad_v[kmaxshowerhits]->Fill( nusel.max_shower_nhits );
@@ -443,7 +484,10 @@ int main( int nargs, char** argv ) {
         hvariable_bad_v[klargestshowerll]->Fill( nusel.largest_shower_ll );
         hvariable_bad_v[klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
         hvariable_bad_v[kclosestshowerll]->Fill( nusel.closest_shower_ll );
-        hvariable_bad_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );                
+        hvariable_bad_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
+        hvariable_bad_v[knplanesconnected]->Fill( nusel.nplanes_connected );
+        hvariable_bad_v[kminconnectpass]->Fill( min_connected_pass );
+        
       }
 
       // Cut variables: study correlation between reco state:
@@ -475,10 +519,34 @@ int main( int nargs, char** argv ) {
         hvar_onnu[vtx_reco_state][klargestshowerll]->Fill( nusel.largest_shower_ll );
         hvar_onnu[vtx_reco_state][klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
         hvar_onnu[vtx_reco_state][kclosestshowerll]->Fill( nusel.closest_shower_ll );
-        hvar_onnu[vtx_reco_state][kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );                
+        hvar_onnu[vtx_reco_state][kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
+        hvar_onnu[vtx_reco_state][knplanesconnected]->Fill( nusel.nplanes_connected );
+        hvar_onnu[vtx_reco_state][kminconnectpass]->Fill( min_connected_pass );
+        
       }
+
+      // dQ/dx plots: need to save dqdx data, which didnt ..
+      // if ( vtx_dwall>10.0 && vtx_pass[kVertexAct] ) {
+
+      //   // we have to recover the dqdx track (cannot, no image2d ...)
+      //   NuSelShowerTrunkAna
+      // if ( nusel.dist2truevtx<2.0 && 
+      //   int largest_shower_idx = 0;
+      //   int max_nhits = 0;
+      //   for (int ishower=0; ishower<(int)nuvtx.shower_v.size(); ishower++) {
+      //     if ( max_nhits<(int)nuvtx.shower_v.size() ) {
+      //       max_nhits = (int)nuvtx.shower_v.size();
+      //       largest_shower_idx = ishower;
+      //     }
+      //   }
+
+        
+        
+      // }
+      // else if ( nusel.dist2truevtx>2.0 && vtx_dwall>10.0 && vtx_pass[kVertexAct] ) {
+      // }
       
-    }
+    }//end of VERTEX LOOP
     std::sort( index_by_dist_v.begin(), index_by_dist_v.end() );
 
     // for debug

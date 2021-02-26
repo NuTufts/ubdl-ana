@@ -2,6 +2,8 @@ import os,sys
 import ROOT as rt
 rt.gStyle.SetOptStat(0)
 
+rt.gStyle.SetHistTopMargin(0)
+
 #pot = 4.5e19
 pot = 1e20
 
@@ -16,10 +18,9 @@ fill_order = ["intrinsicnue","bnbnu"]
 
 sample_names = [ "is1eVA","1e1p","all" ]
 
-reco_state_names = ["onvtx","offvtxnu","offvtxcosmic"]
-reco_state_styles = {"onvtx":1001,
-                     "offvtxnu":3002,
-                     "offvtxcosmic":3144 }
+reco_state_names = ["good","bad"]
+reco_state_styles = {"good":1001,
+                     "bad":3002}
 
 cutvar_names  = [ "dwall",
                   "dist2true",
@@ -87,7 +88,12 @@ for cutvar in cutvar_names:
             stack_tot += h.Integral()
             hists[(nutype,cutvar,recostat)] = h
     
-    hstack.Draw("hist")
+
+    ymax = hstack.GetMaximum()
+    print ymax
+    hstack.SetMaximum(ymax*10 )
+    hstack.SetMinimum( 0.01 )
+    hstack.Draw("hist")    
     canvas[cutvar].Draw()
     print hname,": ",stack_tot
     hstack_v[cutvar] = hstack

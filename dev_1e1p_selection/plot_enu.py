@@ -2,15 +2,15 @@ import os,sys
 import ROOT as rt
 rt.gStyle.SetOptStat(0)
 
-pot = 4.5e19
-#pot = 2e20
+#pot = 4.5e19
+pot = 1e20
 
-ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_merged.root",
-          "intrinsicnue":"plots_1e1p_sel_intrinsic_merged.root"}
+ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_showerll_merged.root",
+          "intrinsicnue":"plots_1e1p_sel_intrinsic_showerll_merged.root"}
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
-fpot = {"bnbnu":1.2495750974e+20,#5.112648436e+19,
-        "intrinsicnue":4.613240272e+22}
+fpot = {"bnbnu":9.85e19,
+        "intrinsicnue":4.61e22}
 fill_order = ["intrinsicnue","bnbnu"]
 #fill_order = ["bnbnu"]
 
@@ -29,6 +29,9 @@ mode_styles = {"ccqe":1001,
                "ncres":3007,
                "ncother":3025,
                "all":3003}
+nu_symbols = {"intrinsicnue":"#nu_{e}",
+              "bnbnu":"#nu_{#mu}",
+              "nc":"#nu"}
 
 rfile = {}
 for nutype in ftypes:
@@ -39,39 +42,59 @@ hists = {}
 hstack_v = {}
 tlen_v = []
 for s in sample_names:
+    print "====== SAMPLE ",s," =========="
     canvas[s] = rt.TCanvas("c%s"%(s),s,1200,600)
 
     # building up this stack
     hstack = rt.THStack("h"+s+"_stack","")
     all_tot = 0. # a check
     stack_tot = 0.
+    lowe_tot = 0.;
+
+    tlen = rt.TLegend(0.75,0.35, 0.9,0.9)
     
     # load hists
-    for mode in mode_names:
-        #hname = "hEnu_%s_vertexactcut_%s"%(s,mode)
-        hname = "hEnu_%s_allrecocut_%s"%(s,mode)        
+    for nutype in fill_order:
+        print "--",nutype,"-------"
+        for mode in mode_names:
+            #hname = "hEnu_%s_vertexactcut_%s"%(s,mode)
+            hname = "hEnu_%s_allrecocut_%s"%(s,mode)        
 
-        for nutype in fill_order:
             h = rfile[nutype].Get( hname )
             h.SetFillColor(fcolors[nutype])
             h.SetFillStyle(mode_styles[mode])
             scale = pot/fpot[nutype]
             h.Scale(scale)
-            print nutype," ",s," ",mode,": ",h.Integral()
+            #print nutype," ",s," ",mode,": ",h.Integral()
             if mode != "all":
                 hstack.Add(h)
                 stack_tot += h.Integral()
+                lowe_tot +=  h.Integral(1,h.GetXaxis().FindBin(500))
             else:
                 all_tot += h.Integral()
-                print "  all <=500 Mev: ",h.Integral(1,h.GetXaxis().FindBin(500))
+                #print "  all <=500 Mev: ",h.Integral(1,h.GetXaxis().FindBin(500))
+            #if nutype in ["intrinsicnue"]:
+            print nutype," ",s," ",mode,": ",h.Integral()," low-E: ",h.Integral(1,h.GetXaxis().FindBin(500))
+            if h.Integral()>0 and mode!="all":
+                if "nc" in mode:
+                    tlen.AddEntry(h,"%s:%s"%( nu_symbols["nc"],mode),"F")
+                else:
+                    tlen.AddEntry(h,"%s:%s"%( nu_symbols[nutype],mode),"F")
             hists[(nutype,s,mode)] = h
             
     hstack.Draw("hist")
-    print "stack tot=", stack_tot," vs. all tot=",all_tot        
+    hstack.SetTitle(";true E_{#nu};counts/100 MeV/1E20 POT")
+    print "stack tot=", stack_tot," vs. all tot=",all_tot
+    print "low E, <500 MeV tot=",lowe_tot
+    tlen.Draw()
     canvas[s].Draw()
     hstack_v[s] = hstack
+    canvas[s].Update()
+    tlen_v.append(tlen)
+    raw_input()
     
+print "POT: ",pot
 print "enter to end"
-raw_input()
+
 
 
