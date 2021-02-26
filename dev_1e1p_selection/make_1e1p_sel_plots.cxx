@@ -177,15 +177,16 @@ int main( int nargs, char** argv ) {
          khipfraction,    // [6]
          kminshowergap,   // [7]
          kmaxshowergap,   // [8]
-         kmaxtracklen,    // [9]
-         kvertexact,      // [10]
-         klargestshowerll, // [11]
-         kclosestshowerll, // [12]
-         klargestshoweravedqdx, // [13]
-         kclosestshoweravedqdx, // [14]
-         knplanesconnected,      // [15]
-         kminconnectpass,        // [16]
-         kNumCutVariables };    // [17]         
+         kmintrackgap,    // [9]         
+         kmaxtracklen,    // [10]         
+         kvertexact,      // [12]
+         klargestshowerll, // [13]
+         kclosestshowerll, // [14]
+         klargestshoweravedqdx, // [15]
+         kclosestshoweravedqdx, // [16]
+         knplanesconnected,      // [17]
+         kminconnectpass,        // [18]
+         kNumCutVariables };    // [19]         
          
   std::vector<std::string> cutvar_names
     = { "dwall", //0
@@ -197,16 +198,17 @@ int main( int nargs, char** argv ) {
         "hipfraction",
         "minshowergap",
         "maxshowergap",
+        "mintrackgap",
         "maxtracklen",
-        "vertexcharge", //10
+        "vertexcharge", //12
         "largestshowerll",
         "closestshowerll",
         "largestshoweravedqdx",
-        "closestshoweravedqdx", //14
+        "closestshoweravedqdx", //16
         "nplanesconnected",
-        "minconnectpass" // [16]
+        "minconnectpass" // [18]
   };
-  float cutvar_range[17][2] = { {-10,200},  // dwall
+  float cutvar_range[18][2] = { {-10,200},  // dwall
                                 {0, 50 },   // distance to true vertex
                                 {0, 2000},  // hits in largest shower
                                 {0, 10},    // num shower prongs
@@ -215,6 +217,7 @@ int main( int nargs, char** argv ) {
                                 {0,1.01},   // hip fraction
                                 {0,50.0},   // minshowergap
                                 {0,50.0},   // maxshowergap
+                                {0,50.0},   // mintrackgap
                                 {0,500},    // maxtracklen
                                 {0,150.0},  // vertex activity: charge per pixel around reco vertex
                                 {-50,110},  // largest shower likelihood
@@ -224,7 +227,7 @@ int main( int nargs, char** argv ) {
                                 {0,4},      // num connected planes
                                 {0,4}       // num connected planes
   };
-  int cutvar_nbins[17] = { 210, // [0] dwall
+  int cutvar_nbins[18] = { 210, // [0] dwall
                            150, // [1] dist 2 true
                            100, // [2] hits in largest shower
                            10,  // [3] num shower prongs
@@ -233,14 +236,15 @@ int main( int nargs, char** argv ) {
                            50,  // [6] hip fraction
                            50,  // [7] minshowergap
                            50,  // [8] maxshowergap
-                           500, // [9] maxtracklen
-                           50,  // [10] vertex activity
-                           161, // [11] largest shower likelihood
-                           161, // [12] largest shower ave dqdx
-                           100, // [13] closest shower likelihood
-                           100, // [14] closest shower ave dqdx
-                           4,   // [15] nplanes connected
-                           4    // [16] min connected pass among planes
+                           50,  // [9] mintrackgap
+                           500, // [10] maxtracklen
+                           50,  // [11] vertex activity
+                           161, // [12] largest shower likelihood
+                           161, // [13] largest shower ave dqdx
+                           100, // [14] closest shower likelihood
+                           100, // [15] closest shower ave dqdx
+                           4,   // [16] nplanes connected
+                           4    // [17] min connected pass among planes
   };
 
   // dq/dx plots: we will fill for vtx that passes vertex activity cuts
@@ -460,8 +464,9 @@ int main( int nargs, char** argv ) {
         hvariable_good_v[kntrackprongs]->Fill( nusel.ntracks );
         hvariable_good_v[kllpid]->Fill( nusel.max_proton_pid );
         hvariable_good_v[khipfraction]->Fill( nusel.vertex_hip_fraction );
-        hvariable_good_v[kminshowergap]->Fill( nusel.min_shower_gap );
-        hvariable_good_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
+        if ( nusel.nshowers>0 ) hvariable_good_v[kminshowergap]->Fill( nusel.min_shower_gap );
+        if ( nusel.nshowers>0 ) hvariable_good_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
+        if ( nusel.ntracks>0 )  hvariable_good_v[kmintrackgap]->Fill( nusel.min_track_gap );        
         hvariable_good_v[kmaxtracklen]->Fill( nusel.max_track_length );
         hvariable_good_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );        
         hvariable_good_v[klargestshowerll]->Fill( nusel.largest_shower_ll );
@@ -480,8 +485,9 @@ int main( int nargs, char** argv ) {
         hvariable_bad_v[kntrackprongs]->Fill( nusel.ntracks );
         hvariable_bad_v[kllpid]->Fill( nusel.max_proton_pid );
         hvariable_bad_v[khipfraction]->Fill( nusel.vertex_hip_fraction );
-        hvariable_bad_v[kminshowergap]->Fill( nusel.min_shower_gap );
-        hvariable_bad_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
+        if ( nusel.nshowers>0 ) hvariable_bad_v[kminshowergap]->Fill( nusel.min_shower_gap );
+        if ( nusel.nshowers>0 ) hvariable_bad_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
+        if ( nusel.ntracks>0 )  hvariable_bad_v[kmintrackgap]->Fill( nusel.min_track_gap );          
         hvariable_bad_v[kmaxtracklen]->Fill( nusel.max_track_length );
         hvariable_bad_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );
         hvariable_bad_v[klargestshowerll]->Fill( nusel.largest_shower_ll );
@@ -515,8 +521,9 @@ int main( int nargs, char** argv ) {
         hvar_onnu[vtx_reco_state][kntrackprongs]->Fill( nusel.ntracks );
         hvar_onnu[vtx_reco_state][kllpid]->Fill( nusel.max_proton_pid );
         hvar_onnu[vtx_reco_state][khipfraction]->Fill( nusel.vertex_hip_fraction );
-        hvar_onnu[vtx_reco_state][kminshowergap]->Fill( nusel.min_shower_gap );
-        hvar_onnu[vtx_reco_state][kmaxshowergap]->Fill( nusel.max_shower_gap );
+        if ( nusel.nshowers>0 ) hvar_onnu[vtx_reco_state][kminshowergap]->Fill( nusel.min_shower_gap );
+        if ( nusel.nshowers>0 ) hvar_onnu[vtx_reco_state][kmaxshowergap]->Fill( nusel.max_shower_gap );
+        if ( nusel.ntracks>0 )  hvar_onnu[vtx_reco_state][kmintrackgap]->Fill( nusel.min_track_gap );
         hvar_onnu[vtx_reco_state][kmaxtracklen]->Fill( nusel.max_track_length );
         hvar_onnu[vtx_reco_state][kvertexact]->Fill( nusel.vertex_charge_per_pixel );
         hvar_onnu[vtx_reco_state][klargestshowerll]->Fill( nusel.largest_shower_ll );
