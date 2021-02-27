@@ -420,7 +420,7 @@ int main( int nargs, char** argv ) {
       vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0);
       vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 );
       vtx_pass[kRecoFV]        = (reco_dwall>5.0);
-      vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic>0.5);
+      vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5);
       vtx_pass[kAllCuts]       = true;
 
       // reco variable cuts only
