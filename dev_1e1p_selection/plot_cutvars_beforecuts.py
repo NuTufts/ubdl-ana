@@ -7,12 +7,12 @@ rt.gStyle.SetHistTopMargin(0)
 #pot = 4.5e19
 pot = 1e20
 
-ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_showerll_merged.root",
-          "intrinsicnue":"plots_1e1p_sel_intrinsic_showerll_merged.root"}
+ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_newgap_merged.root",
+          "intrinsicnue":"plots_1e1p_sel_intrinsic_newgap_merged.root"}
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
-fpot = {"bnbnu":9.85e19,
-        "intrinsicnue":4.25e22}
+fpot = {"bnbnu":5.163410946e+19,
+        "intrinsicnue":4.597582955e+22}
 fill_order = ["intrinsicnue","bnbnu"]
 #fill_order = ["bnbnu"]
 

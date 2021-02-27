@@ -5,12 +5,12 @@ rt.gStyle.SetOptStat(0)
 #pot = 4.5e19
 pot = 1e20
 
-ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_showerll_merged.root",
-          "intrinsicnue":"plots_1e1p_sel_intrinsic_showerll_merged.root"}
+ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_loose_merged.root",
+          "intrinsicnue":"plots_1e1p_sel_intrinsic_loose_merged.root"}
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
-fpot = {"bnbnu":9.85e19,
-        "intrinsicnue":4.25e22}
+fpot = {"bnbnu":5.163410946e+19,
+        "intrinsicnue":4.597582955e+22}
 fill_order = ["intrinsicnue","bnbnu"]
 #fill_order = ["bnbnu"]
 
@@ -35,7 +35,10 @@ cutvar_names  = [ "dwall",
                   "largestshowerll",
                   "closestshowerll",
                   "largestshoweravedqdx",
-                  "closestshoweravedqdx" ]
+                  "closestshoweravedqdx",
+                  "minconnectpass",
+                  "nplanesconnected",
+                  "secondshowersize" ]
 
 
 mode_names = ["ccqe",
@@ -78,8 +81,11 @@ for cutvar in cutvar_names:
 
         for nutype in fill_order:
             h = rfile[nutype].Get( hname )
-            h.SetFillColor(fcolors[nutype])
-            h.SetFillStyle( reco_state_styles[recostat] )
+            try:
+                h.SetFillColor(fcolors[nutype])
+                h.SetFillStyle( reco_state_styles[recostat] )
+            except:
+                raise ValueError("Error loading: ",hname)
             scale = pot/fpot[nutype]
             h.Scale(scale)
             print nutype," ",hname,": ",h.Integral()
@@ -91,6 +97,7 @@ for cutvar in cutvar_names:
     canvas[cutvar].Draw()
     print hname,": ",stack_tot
     hstack_v[cutvar] = hstack
+    hstack.SetMinimum(0.01)    
     canvas[cutvar].SetLogy(1)
     canvas[cutvar].Update()
     
