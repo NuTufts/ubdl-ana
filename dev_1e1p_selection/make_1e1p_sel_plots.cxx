@@ -1,4 +1,3 @@
-#include <iostream>
 #include <string>
 #include <sstream>
 #include <fstream>
@@ -145,13 +144,14 @@ int main( int nargs, char** argv ) {
          kShowerGap,      // [5] shower gap
          kTrackGap,       // [6] track gap
          kMaxTrackLen,    // [7] max track len
-         kVertexAct,      // [8] vertex activity cut
-         kRecoFV,         // [9] reco fv cut
-         kWCPixel,        // [10] Wire-Cell pixel cut          
-         kHadronic,       // [11] see hadronic particles (proton or vertex activity)         
-         kShowerLLCut,    // [12] shower likelihood cut
-         kAllCuts,        // [13] All cuts applied except FV -- represents reco pass rate
-         kNumCuts };      // [14] Number in enum
+         kSecondShower,   // [8] second shower size
+         kVertexAct,      // [9] vertex activity cut
+         kRecoFV,         // [10] reco fv cut
+         kShowerLLCut,    // [11] shower likelihood cut         
+         kWCPixel,        // [12] Wire-Cell pixel cut
+         kHadronic,       // [13] see hadronic particles (proton or vertex activity)         
+         kAllCuts,        // [14] All cuts applied except FV -- represents reco pass rate
+         kNumCuts };      // [15] Number in enum
   std::vector<std::string> selcut_names
     = { "fv",             // [0]
         "vertexcand",     // [1]
@@ -161,13 +161,14 @@ int main( int nargs, char** argv ) {
         "showergap",      // [5]
         "trackgap",       // [6]
         "maxtracklen",    // [7]
-        "vertexact",      // [8]        
-        "recofv",         // [9]
-        "wcpixel",        // [10]        
-        "hadronic",       // [11]        
-        "showerll",       // [12]
-        "allreco",        // [13]
-        "numcuts"};       // [14]
+        "secondshower",   // [8]
+        "vertexact",      // [9]
+        "showerll",       // [10]        
+        "recofv",         // [11]
+        "wcpixel",        // [12]        
+        "hadronic",       // [13]        
+        "allreco",        // [14]
+        "numcuts"};       // [15]
 
   // Cut variables for studying optimal cuts
   enum { kdwall=0, // [0]
@@ -432,13 +433,19 @@ int main( int nargs, char** argv ) {
       vtx_pass[kShowerGap]     = nusel.nplanes_connected>=2; // [5]
       vtx_pass[kTrackGap]      = (nusel.ntracks==0 || nusel.min_track_gap<3.0); // [6]
       vtx_pass[kMaxTrackLen]   = (nusel.ntracks==0 || nusel.max_track_length<300.0); // [7]
+      vtx_pass[kSecondShower]  = (nhits_second_shower<100);
       vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0); // [8]      
       vtx_pass[kRecoFV]        = (reco_dwall>5.0); // [9]
-      vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5); // [10]
-      //vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5); // [11]      
+
       //vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 ); // [12]
+      vtx_pass[kShowerLLCut]   = (nusel.largest_shower_avedqdx > 20.0 && nusel.largest_shower_avedqdx>20 );
+      //vtx_pass[kShowerLLCut]   = true; // [12] pass for study      
+
+      vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5); // [10]
+      
+      //vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5); // [11]      
       vtx_pass[kHadronic]      = true; // [11] pass for study
-      vtx_pass[kShowerLLCut]   = true; // [12] pass for study
+
       vtx_pass[kAllCuts]       = true;
 
       // reco variable cuts only
