@@ -444,7 +444,7 @@ int main( int nargs, char** argv ) {
       vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5); // [10]
       
       //vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5); // [11]
-      vtx_pass[kHadronic]      = (nusel.max_proton_pid<40);
+      vtx_pass[kHadronic]      = (nusel.max_proton_pid<40 && (nusel.max_track_length>3.0 || nusel.vertex_hip_fraction>0.2));
       //vtx_pass[kHadronic]      = true; // [11] pass for study
 
       vtx_pass[kAllCuts]       = true;
