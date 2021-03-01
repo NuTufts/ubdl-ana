@@ -14,7 +14,7 @@ LDFLAGS+=`larcv-config --libs` -lLArCVCorePyUtil
 LDFLAGS+=`larlite-config --libs`
 LDFLAGS+=`root-config --libs`
 
-EXECS = make_1e1p_sel_plots
+EXECS = make_1e1p_sel_plots make_finalstate_plots
 
 all: $(EXECS)
 

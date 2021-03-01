@@ -17,7 +17,7 @@ selcut_names  = [ "fv",
                   "recofv",
                   "wcpixel",
                   "hadronic",
-                  "showerll",
+                  #"showerll",
                   "allreco",
                   "numcuts"]
 selcut_colors = { "fv":rt.kBlack,

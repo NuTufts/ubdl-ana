@@ -5,11 +5,11 @@ rt.gStyle.SetOptStat(0)
 #pot = 4.5e19
 pot = 1e20
 
-ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_loose_merged.root",
-          "intrinsicnue":"plots_1e1p_sel_intrinsic_loose_merged.root"}
+ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_newgap_merged.root",
+          "intrinsicnue":"plots_1e1p_sel_intrinsic_newgap_merged.root"}
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
-fpot = {"bnbnu":5.163410946e+19,
+fpot = {"bnbnu":2.2610676018999955e+20,
         "intrinsicnue":4.597582955e+22}
 fill_order = ["intrinsicnue","bnbnu"]
 #fill_order = ["bnbnu"]
