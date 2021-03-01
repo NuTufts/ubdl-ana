@@ -68,7 +68,7 @@ int main( int nargs, char** argv ) {
   in->SetBranchAddress( "interactionType", &interactionType );
   in->SetBranchAddress( "nu_pdg", &nu_pdg );
   in->SetBranchAddress( "nproton_60mev", &nproton_60mev );
-  in->SetBranchAddress( "nmeson_60mev",  &nmeson_35mev );
+  in->SetBranchAddress( "nmeson_35mev",  &nmeson_35mev );
   in->SetBranchAddress( "npi0",  &npi0 );
   
   // Selection variables
