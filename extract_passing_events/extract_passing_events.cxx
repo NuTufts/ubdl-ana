@@ -38,7 +38,7 @@ int main( int nargs, char** argv ) {
   TTree* thrumutree = (TTree*)larcv_file->Get("image2d_thrumu_tree");
   TTree* larliteid  = (TTree*)larlite_file->Get("larlite_id_tree");
   std::vector< TTree* > cosmic_tree_v;
-  std::vector< TTree* > cosmic_outtree_v;  
+  std::vector< TTree* > cosmic_outtree_v;
   std::vector< std::string > cosmic_tree_name_v
     = {"boundarycosmicnoshift",
        "containedcosmic" };
@@ -49,6 +49,15 @@ int main( int nargs, char** argv ) {
     TTree* copy_track   = (TTree*)cosmic_track->CloneTree(0);
     cosmic_tree_v.push_back( cosmic_track );
   }
+  std::vector< TTree* > larlite_mcinfo_tree_v;
+  std::vector< std::string > mcinfo_tree_name_v
+    = {"mctruth_generator_tree",
+       "mcshower_mcreco_tree",
+       "mctrack_mcreco_tree" };
+  for ( auto& name : mcinfo_tree_name_v ) {
+    TTree* lltree = (TTree*)larlite_file->Get( name.c_str() );
+    larlite_mcinfo_tree_v.push_back(lltree);
+  }
 
   // output file and cloned trees
   TFile* output_file  = new TFile( output_filename.c_str(), "new" );  
@@ -56,10 +65,15 @@ int main( int nargs, char** argv ) {
   TTree* out_img2d_tree  = (TTree*)img2dtree->CloneTree(0);
   TTree* out_thrumu_tree = (TTree*)thrumutree->CloneTree(0);
   TTree* out_llid_tree   = (TTree*)larliteid->CloneTree(0);
+  std::vector< TTree* > out_mcinfo_v;
 
   for ( auto& ptree : cosmic_tree_v ) {
     TTree* copy_track = (TTree*)ptree->CloneTree(0);
     cosmic_outtree_v.push_back( copy_track );
+  }
+  for ( auto& ptree : larlite_mcinfo_tree_v )  {
+    TTree* copy_tree = (TTree*)ptree->CloneTree(0);
+    out_mcinfo_v.push_back( copy_tree );
   }
 
 
@@ -148,6 +162,8 @@ int main( int nargs, char** argv ) {
     larliteid->GetEntry(ientry);
     for ( auto& ptree : cosmic_tree_v )
       ptree->GetEntry(ientry);
+    for ( auto& ptree : larlite_mcinfo_tree_v )
+      ptree->GetEntry(ientry);
 
     std::vector<larflow::reco::NuVertexCandidate>    pass_vtx_v;
     std::vector<larflow::reco::NuSelectionVariables> pass_var_v;
@@ -232,6 +248,8 @@ int main( int nargs, char** argv ) {
       out_llid_tree->Fill();
       for ( auto& ptree : cosmic_outtree_v )
         ptree->Fill();
+      for ( auto& ptree : out_mcinfo_v )
+        ptree->Fill();
     }
 
   }//end of entry loop
@@ -243,6 +261,11 @@ int main( int nargs, char** argv ) {
   out_thrumu_tree->AutoSave();
   out_llid_tree->AutoSave();
   for ( auto& ptree : cosmic_outtree_v ) { 
+    ptree->AutoSave();
+    delete ptree;
+    ptree = nullptr;
+  }
+  for ( auto& ptree : out_mcinfo_v ) {
     ptree->AutoSave();
     delete ptree;
     ptree = nullptr;
