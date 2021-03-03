@@ -80,30 +80,37 @@ int main( int nargs, char** argv ) {
   // cut stages
   enum { kFV=0,           // [0] true vertex in FV (10 cm from TPC boundary), sets baseline for efficiency study
          kVertexCand3cm,  // [1] reco candidate formed within 3 cm of vertex
-         kMinShowerSize,  // [2] min shower size cut
+         kMinShowerSize,  // [2] min shower size cut (might want to loosen)
          kNShowerProngs,  // [3] number of shower prongs
          kNTrackProngs,   // [4] number of track prongs         
-         kHadronic,       // [5] see hadronic particles (proton or vertex activity)
-         kShowerGap,      // [6] shower gap
-         kVertexAct,      // [7] vertex activity cut
-         kShowerLLCut,    // [8] shower likelihood cut
-         kRecoFV,         // [9] reco fv cut
-         kAllCuts,        // [10] All cuts applied except FV -- represents reco pass rate
-         kNumCuts };      // [11] Number in enum
-
+         kShowerGap,      // [5] shower gap
+         kTrackGap,       // [6] track gap
+         kMaxTrackLen,    // [7] max track len
+         kSecondShower,   // [8] second shower size
+         kVertexAct,      // [9] vertex activity cut
+         kRecoFV,         // [10] reco fv cut
+         kShowerLLCut,    // [11] shower likelihood cut         
+         kWCPixel,        // [12] Wire-Cell pixel cut
+         kHadronic,       // [13] see hadronic particles (proton or vertex activity)         
+         kAllCuts,        // [14] All cuts applied except FV -- represents reco pass rate
+         kNumCuts };      // [15] Number in enum
   std::vector<std::string> selcut_names
     = { "fv",             // [0]
         "vertexcand",     // [1]
         "minshower",      // [2]
         "nshowerprongs",  // [3]
         "ntrackprongs",   // [4]
-        "hadronic",       // [5]
-        "showergap",      // [6]
-        "vertexact",      // [7]
-        "showerll",       // [8]
-        "recofv",         // [9]
-        "allreco",        // [10]
-        "numcuts"};       // [11]
+        "showergap",      // [5]
+        "trackgap",       // [6]
+        "maxtracklen",    // [7]
+        "secondshower",   // [8]
+        "vertexact",      // [9]
+        "showerll",       // [10]        
+        "recofv",         // [11]
+        "wcpixel",        // [12]        
+        "hadronic",       // [13]        
+        "allreco",        // [14]
+        "numcuts"};       // [15]
   
   
   const float vtx_cutoff  = 5.0;
@@ -183,20 +190,32 @@ int main( int nargs, char** argv ) {
       int reco_boundary = 0;
       float reco_dwall = ublarcvapp::dwall( nuvtx.pos, reco_boundary );
 
+      // second shower size
+      int nhits_second_shower = 0;
+      if ( nuvtx.shower_v.size()>1 ) {
+        std::vector<int> nhit_shower_v(nuvtx.shower_v.size(),0);
+        for (size_t ishr=0; ishr<nuvtx.shower_v.size(); ishr++)
+          nhit_shower_v[ishr] = (int)nuvtx.shower_v[ishr].size();
+        std::sort( nhit_shower_v.begin(), nhit_shower_v.end() );
+        nhits_second_shower = nhit_shower_v[1];
+      }      
+
       // selection cuts
       std::vector<bool> vtx_pass( kNumCuts, false );
-      vtx_pass[kFV] = cut_fv;
-      vtx_pass[kVertexCand3cm] = nusel.dist2truevtx<3.0;
-      vtx_pass[kMinShowerSize] = nusel.max_shower_nhits>500;
-      vtx_pass[kNShowerProngs] = ( nusel.nshowers>0 && nusel.nshowers<=2 );
-      vtx_pass[kNTrackProngs]  = ( nusel.ntracks<=2 );
-      vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5);
-      vtx_pass[kShowerGap]     = (nusel.min_shower_gap<2.0 && nusel.max_shower_gap<2.0);
-      vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0);
-      //vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 );
-      //vtx_pass[kRecoFV]        = (reco_dwall>5.0);
-      vtx_pass[kShowerLLCut]   = true;
-      vtx_pass[kRecoFV]        = true;
+      vtx_pass[kFV] = cut_fv; // [0]
+      vtx_pass[kVertexCand3cm] = nusel.dist2truevtx<3.0; // [1]
+      vtx_pass[kMinShowerSize] = nusel.max_shower_nhits>500; // [2]
+      vtx_pass[kNShowerProngs] = ( nusel.nshowers>0 && nusel.nshowers<=2 ); // [3]
+      vtx_pass[kNTrackProngs]  = ( nusel.ntracks<=2 ); // [4]
+      vtx_pass[kShowerGap]     = nusel.nplanes_connected>=2; // [5]
+      vtx_pass[kTrackGap]      = (nusel.ntracks==0 || nusel.min_track_gap<3.0); // [6]
+      vtx_pass[kMaxTrackLen]   = (nusel.ntracks==0 || nusel.max_track_length<300.0); // [7]
+      vtx_pass[kSecondShower]  = (nhits_second_shower<100); // [8]
+      vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0); // [9]
+      vtx_pass[kRecoFV]        = (reco_dwall>5.0); // [10]
+      vtx_pass[kShowerLLCut]   = (nusel.largest_shower_avedqdx > 20.0 && nusel.largest_shower_avedqdx>20 ); // [11]
+      vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5); // [12]      
+      vtx_pass[kHadronic]      = (nusel.max_proton_pid<40 && nusel.vertex_hip_fraction>0.05); // [13]
       vtx_pass[kAllCuts]       = true;
 
       // reco variable cuts only
