@@ -26,19 +26,72 @@ int main( int nargs, char** argv ) {
   std::string output_filename = argv[4];
 
   bool DEBUG = true;
+  bool HAS_MC = true;
   
 
   TFile* larcv_file   = new TFile( input_larcv.c_str(), "open" );
   TFile* kpsreco_file = new TFile( input_kpsreco.c_str(), "open" );
   TFile* larlite_file = new TFile( input_larlite.c_str(), "open" );
 
+  std::vector<TTree*> data_tree_v;
+  std::vector<TTree*> mc_tree_v;  
+  
   // source trees
+
+  // KPRECO TREE
   TTree* kprecotree = (TTree*)kpsreco_file->Get("KPSRecoManagerTree");
+  data_tree_v.push_back( kprecotree );
+
+  // LARCV TREE
   TTree* img2dtree  = (TTree*)larcv_file->Get("image2d_wire_tree");
+  data_tree_v.push_back( img2dtree );
+
   TTree* thrumutree = (TTree*)larcv_file->Get("image2d_thrumu_tree");
+  data_tree_v.push_back( thrumutree );
+
+  TTree* chstattree = (TTree*)larcv_file->Get("chstatus_wire_tree");
+  data_tree_v.push_back( chstattree );
+  
+  TTree* ubspurntree[3] = {nullptr};
+  for (int ii=0; ii<3; ii++) {
+    std::stringstream treename;
+    treename << "image2d_ubspurn_plane" << ii << "_tree";
+    ubspurntree[ii] = (TTree*)larcv_file->Get( treename.str().c_str() );
+    data_tree_v.push_back( ubspurntree[ii] );
+  }
+  
+  TTree* ssnetout = (TTree*)larcv_file->Get( "sparseuresnetout" );
+  data_tree_v.push_back( ssnetout );
+  
+  std::vector< TTree* > larcv_mc_tree_v;
+  std::vector< std::string > larcv_mc_tree_name_v
+    = { "image2d_instance_tree",
+        "image2d_segment_tree",
+        "image2d_larflow_tree" };
+  for ( auto& name : larcv_mc_tree_name_v ) {
+    TTree* mctree = (TTree*)larcv_file->Get(name.c_str());
+    larcv_mc_tree_name_v.push_back(name);
+    mc_tree_v.push_back( mctree );
+  }
+
+      
   TTree* larliteid  = (TTree*)larlite_file->Get("larlite_id_tree");
+  data_tree_v.push_back( larliteid );
+  
+  TTree* larmatch   = (TTree*)larlite_file->Get("larflow3dhit_larmatch_tree");
+  std::vector< TTree* > larlite_mcinfo_tree_v;
+  std::vector< std::string > mcinfo_tree_name_v
+    = {"mctruth_generator_tree",
+       "mcshower_mcreco_tree",
+       "mctrack_mcreco_tree"};
+  for ( auto& name : mcinfo_tree_name_v ) {
+    TTree* lltree = (TTree*)larcv_file->Get( name.c_str() );
+    larlite_mcinfo_tree_v.push_back(lltree);
+    mc_tree_v.push_back( lltree );
+  }
+
   std::vector< TTree* > cosmic_tree_v;
-  std::vector< TTree* > cosmic_outtree_v;
+  //std::vector< TTree* > cosmic_outtree_v;
   std::vector< std::string > cosmic_tree_name_v
     = {"boundarycosmicnoshift",
        "containedcosmic" };
@@ -47,34 +100,39 @@ int main( int nargs, char** argv ) {
     treename << "track_" << name << "_tree";
     TTree* cosmic_track = (TTree*)larlite_file->Get( treename.str().c_str() );
     TTree* copy_track   = (TTree*)cosmic_track->CloneTree(0);
-    cosmic_tree_v.push_back( cosmic_track );
-  }
-  std::vector< TTree* > larlite_mcinfo_tree_v;
-  std::vector< std::string > mcinfo_tree_name_v
-    = {"mctruth_generator_tree",
-       "mcshower_mcreco_tree",
-       "mctrack_mcreco_tree" };
-  for ( auto& name : mcinfo_tree_name_v ) {
-    TTree* lltree = (TTree*)larcv_file->Get( name.c_str() );
-    larlite_mcinfo_tree_v.push_back(lltree);
+    //cosmic_tree_v.push_back( cosmic_track );
+    data_tree_v.push_back( cosmic_track );
   }
 
   // output file and cloned trees
-  TFile* output_file  = new TFile( output_filename.c_str(), "new" );  
-  TTree* out_kpreco_tree = (TTree*)kprecotree->CloneTree(0);
-  TTree* out_img2d_tree  = (TTree*)img2dtree->CloneTree(0);
-  TTree* out_thrumu_tree = (TTree*)thrumutree->CloneTree(0);
-  TTree* out_llid_tree   = (TTree*)larliteid->CloneTree(0);
-  std::vector< TTree* > out_mcinfo_v;
+  TFile* output_file  = new TFile( output_filename.c_str(), "new" );
 
-  for ( auto& ptree : cosmic_tree_v ) {
-    TTree* copy_track = (TTree*)ptree->CloneTree(0);
-    cosmic_outtree_v.push_back( copy_track );
+  std::vector<TTree*> out_data_v;
+  std::vector<TTree*> out_mc_v;
+
+  for ( auto& ptree : data_tree_v ) {
+    out_data_v.push_back( (TTree*)ptree->CloneTree(0) );
   }
-  for ( auto& ptree : larlite_mcinfo_tree_v )  {
-    TTree* copy_tree = (TTree*)ptree->CloneTree(0);
-    out_mcinfo_v.push_back( copy_tree );
+
+  for ( auto& ptree : mc_tree_v ) {
+    out_mc_v.push_back( (TTree*)ptree->CloneTree(0) );
   }
+  
+  // TTree* out_kpreco_tree = (TTree*)kprecotree->CloneTree(0);
+  
+  // TTree* out_img2d_tree  = (TTree*)img2dtree->CloneTree(0);
+  // TTree* out_thrumu_tree = (TTree*)thrumutree->CloneTree(0);
+  // TTree* out_llid_tree   = (TTree*)larliteid->CloneTree(0);
+  // std::vector< TTree* > out_mcinfo_v;
+
+  // for ( auto& ptree : cosmic_tree_v ) {
+  //   TTree* copy_track = (TTree*)ptree->CloneTree(0);
+  //   cosmic_outtree_v.push_back( copy_track );
+  // }
+  // for ( auto& ptree : larlite_mcinfo_tree_v )  {
+  //   TTree* copy_tree = (TTree*)ptree->CloneTree(0);
+  //   out_mcinfo_v.push_back( copy_tree );
+  // }
 
 
   // cut stages
@@ -162,15 +220,23 @@ int main( int nargs, char** argv ) {
 
     if ( ientry%100==0 )
       std::cout << "[ ENTRY " << ientry << "]" << std::endl;
-    
-    kprecotree->GetEntry(ientry);
-    img2dtree->GetEntry(ientry);
-    thrumutree->GetEntry(ientry);
-    larliteid->GetEntry(ientry);
-    for ( auto& ptree : cosmic_tree_v )
+
+    for ( auto& ptree : data_tree_v ) {
       ptree->GetEntry(ientry);
-    for ( auto& ptree : larlite_mcinfo_tree_v )
-      ptree->GetEntry(ientry);
+    }
+    if ( HAS_MC ) {
+      for ( auto& ptree : mc_tree_v ) {
+        ptree->GetEntry(ientry);
+      }
+    }
+    // kprecotree->GetEntry(ientry);
+    // img2dtree->GetEntry(ientry);
+    // thrumutree->GetEntry(ientry);
+    // larliteid->GetEntry(ientry);
+    // for ( auto& ptree : cosmic_tree_v )
+    //   ptree->GetEntry(ientry);
+    // for ( auto& ptree : larlite_mcinfo_tree_v )
+    //   ptree->GetEntry(ientry);
 
     std::vector<larflow::reco::NuVertexCandidate>    pass_vtx_v;
     std::vector<larflow::reco::NuSelectionVariables> pass_var_v;
@@ -261,39 +327,61 @@ int main( int nargs, char** argv ) {
 
       }
 
-      out_kpreco_tree->Fill();
-      out_img2d_tree->Fill();
-      out_thrumu_tree->Fill();
-      out_llid_tree->Fill();
-      for ( auto& ptree : cosmic_outtree_v )
+      for ( auto& ptree : out_data_v )
         ptree->Fill();
-      for ( auto& ptree : out_mcinfo_v )
-        ptree->Fill();
+
+      if ( HAS_MC ) {
+        for (auto& ptree : out_mc_v )
+          ptree->Fill();
+      }
+        
+      // out_kpreco_tree->Fill();
+      // out_img2d_tree->Fill();
+      // out_thrumu_tree->Fill();
+      // out_llid_tree->Fill();
+      // for ( auto& ptree : cosmic_outtree_v )
+      //   ptree->Fill();
+      // for ( auto& ptree : out_mcinfo_v )
+      //   ptree->Fill();
     }
 
   }//end of entry loop
 
   std::cout << "TOTAL PASSING: " << TOTAL_PASSING << std::endl;
-  
-  out_kpreco_tree->AutoSave();
-  out_img2d_tree->AutoSave();
-  out_thrumu_tree->AutoSave();
-  out_llid_tree->AutoSave();
-  for ( auto& ptree : cosmic_outtree_v ) { 
+
+  for ( auto& ptree : out_data_v ) {
     ptree->AutoSave();
     delete ptree;
     ptree = nullptr;
   }
-  for ( auto& ptree : out_mcinfo_v ) {
-    ptree->AutoSave();
-    delete ptree;
-    ptree = nullptr;
+
+  if ( HAS_MC ) {
+    for ( auto& ptree : out_mc_v ) {
+      ptree->AutoSave();
+      delete ptree;
+      ptree = nullptr;
+    }
   }
   
-  delete out_kpreco_tree;
-  delete out_img2d_tree;
-  delete out_thrumu_tree;
-  delete out_llid_tree;
+  // out_kpreco_tree->AutoSave();
+  // out_img2d_tree->AutoSave();
+  // out_thrumu_tree->AutoSave();
+  // out_llid_tree->AutoSave();
+  // for ( auto& ptree : cosmic_outtree_v ) { 
+  //   ptree->AutoSave();
+  //   delete ptree;
+  //   ptree = nullptr;
+  // }
+  // for ( auto& ptree : out_mcinfo_v ) {
+  //   ptree->AutoSave();
+  //   delete ptree;
+  //   ptree = nullptr;
+  // }
+  
+  // delete out_kpreco_tree;
+  // delete out_img2d_tree;
+  // delete out_thrumu_tree;
+  // delete out_llid_tree;
   
   return 0;
 }
