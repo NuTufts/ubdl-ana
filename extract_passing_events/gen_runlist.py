@@ -11,13 +11,13 @@ DLPRODDIR="/cluster/tufts/wongjiradlab/nutufts/dlgen2prod"
 #inputlist="../maskrcnn_input_filelists/mcc9_v29e_dl_run3_G1_extbnb_dlana_MRCNN_INPUTS_LIST.txt"
 #stem="merged_dlana"
 
-samplename = "mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge"
-inputlist=DLPRODDIR+"/run3inputlists/mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge.list"
-stem="merged_dlreco"
-
-#samplename = "mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge"
-#inputlist="../maskrcnn_input_filelists/mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge_MRCNN_INPUTS_LIST.txt"
+#samplename = "mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge"
+#inputlist=DLPRODDIR+"/run3inputlists/mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge.list"
 #stem="merged_dlreco"
+
+samplename = "mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge"
+inputlist=DLPRODDIR+"/maskrcnn_input_filelists/mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge_MRCNN_INPUTS_LIST.txt"
+stem="merged_dlreco"
 
 #samplename = "mcc9jan_run1_bnb5e19"
 #inputlist="../run1inputlists/mcc9_v28_wctagger_bnb5e19_filelist.txt"

@@ -55,7 +55,7 @@ int main( int nargs, char** argv ) {
        "mcshower_mcreco_tree",
        "mctrack_mcreco_tree" };
   for ( auto& name : mcinfo_tree_name_v ) {
-    TTree* lltree = (TTree*)larlite_file->Get( name.c_str() );
+    TTree* lltree = (TTree*)larcv_file->Get( name.c_str() );
     larlite_mcinfo_tree_v.push_back(lltree);
   }
 
