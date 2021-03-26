@@ -60,30 +60,36 @@ for ((i=0;i<${STRIDE};i++)); do
     kpsana=`sed -n ${lineno}p ${INPUTLIST} | awk '{ print $2 }'`
     dlmerged=`sed -n ${lineno}p ${INPUTLIST} | awk '{ print $3 }'`
     kpslarlite=`sed -n ${lineno}p ${INPUTLIST} | awk '{ print $4 }'`
+    larmatch=`sed -n ${lineno}p ${INPUTLIST} | awk '{ print $5 }'`
     
     base_kpsana=$(basename $kpsana )
     base_dlmerged=$(basename $dlmerged)
     base_kpslarlite=$(basename $kpslarlite)
+    base_larmatch=$(basename $larmatch)
 
     base_joboutfile=$(echo $base_kpslarlite | sed 's|larflowreco_|dlgen2filtered_|g' | sed 's|_larlite.root|.root|g')
     
     echo "kpsana path: $kpsana" >> ${local_logfile}
     echo "dlmerged path: $dlmerged" >> ${local_logfile}
     echo "kpslarlite path: $kpslarlite" >> ${local_logfile}
+    echo "larmatch path: $larmatch" >> ${local_logfile}
     echo "output file: $base_joboutfile" >> ${local_logfile}
 
     # COPY LOCAL
     cp $kpsana $base_kpsana
     cp $dlmerged $base_dlmerged
     cp $kpslarlite $base_kpslarlite
+    cp $larmatch $base_larmatch
 
-    cmd="extract_passing_events $base_kpsana $base_dlmerged $base_kpslarlite $base_joboutfile"
+    cmd="extract_passing_events $base_kpsana $base_dlmerged $base_kpslarlite $base_larmatch $base_joboutfile"
     echo "RUN PROGRAM" >> ${local_logfile}
     echo $cmd >> ${local_logfile} 2>&1
     $cmd >> ${local_logfile}
     
     # COPY OUTPUT TO FINAL FOLDER
-    cp $base_joboutfile $OUTPUT_DIR/
+    let fileid_dir=${fileid}/100
+    mkdir -p $OUTPUT_DIR/$fileid_dir/
+    cp $base_joboutfile $OUTPUT_DIR/$fileid_dir/
 
     # CLEAN UP
     rm *.root

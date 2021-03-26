@@ -19,7 +19,7 @@
 container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/ubdl_depsonly_py3.6.11_u16.04_cu11_pytorch1.7.1.simg
 RUN_DLANA_DIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/extract_passing_events/
 OFFSET=0
-STRIDE=18
+STRIDE=40
 
 SAMPLE_NAME=mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge
 INPUTFILE=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/extract_passing_events/runlist_dlgen2filter_mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge.txt

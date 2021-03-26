@@ -18,12 +18,14 @@ int main( int nargs, char** argv ) {
   std::cout << "KPSRECO: "<< argv[1] << std::endl;
   std::cout << "LARCV: " << argv[2] << std::endl;
   std::cout << "KPS LARLITE: " << argv[3] << std::endl;
-  std::cout << "OUTFILE: " << argv[4] << std::endl;  
+  std::cout << "LARMATCH: " << argv[4] << std::endl;
+  std::cout << "OUTFILE: " << argv[5] << std::endl;  
   
   std::string input_kpsreco   = argv[1];
   std::string input_larcv     = argv[2];
   std::string input_larlite   = argv[3];
-  std::string output_filename = argv[4];
+  std::string input_larmatch  = argv[4];
+  std::string output_filename = argv[5];
 
   bool DEBUG = true;
   bool HAS_MC = true;
@@ -32,6 +34,7 @@ int main( int nargs, char** argv ) {
   TFile* larcv_file   = new TFile( input_larcv.c_str(), "open" );
   TFile* kpsreco_file = new TFile( input_kpsreco.c_str(), "open" );
   TFile* larlite_file = new TFile( input_larlite.c_str(), "open" );
+  TFile* larmatch_file = new TFile( input_larmatch.c_str(), "open" );
 
   std::vector<TTree*> data_tree_v;
   std::vector<TTree*> mc_tree_v;  
@@ -60,33 +63,35 @@ int main( int nargs, char** argv ) {
     data_tree_v.push_back( ubspurntree[ii] );
   }
   
-  TTree* ssnetout = (TTree*)larcv_file->Get( "sparseuresnetout" );
+  TTree* ssnetout = (TTree*)larcv_file->Get( "sparseimg_sparseuresnetout_tree" );
   data_tree_v.push_back( ssnetout );
   
   std::vector< TTree* > larcv_mc_tree_v;
   std::vector< std::string > larcv_mc_tree_name_v
     = { "image2d_instance_tree",
         "image2d_segment_tree",
+	"image2d_ancestor_tree",
         "image2d_larflow_tree" };
+  //"partroi_segment_tree" };
   for ( auto& name : larcv_mc_tree_name_v ) {
     TTree* mctree = (TTree*)larcv_file->Get(name.c_str());
-    larcv_mc_tree_name_v.push_back(name);
     mc_tree_v.push_back( mctree );
   }
-
       
   TTree* larliteid  = (TTree*)larlite_file->Get("larlite_id_tree");
   data_tree_v.push_back( larliteid );
   
-  TTree* larmatch   = (TTree*)larlite_file->Get("larflow3dhit_larmatch_tree");
-  std::vector< TTree* > larlite_mcinfo_tree_v;
+  TTree* larmatch   = (TTree*)larmatch_file->Get("larflow3dhit_larmatch_tree");
+  data_tree_v.push_back( larmatch );
+  
+  //std::vector< TTree* > larlite_mcinfo_tree_v;
   std::vector< std::string > mcinfo_tree_name_v
     = {"mctruth_generator_tree",
        "mcshower_mcreco_tree",
        "mctrack_mcreco_tree"};
   for ( auto& name : mcinfo_tree_name_v ) {
     TTree* lltree = (TTree*)larcv_file->Get( name.c_str() );
-    larlite_mcinfo_tree_v.push_back(lltree);
+    //larlite_mcinfo_tree_v.push_back(lltree);
     mc_tree_v.push_back( lltree );
   }
 
@@ -99,8 +104,8 @@ int main( int nargs, char** argv ) {
     std::stringstream treename;
     treename << "track_" << name << "_tree";
     TTree* cosmic_track = (TTree*)larlite_file->Get( treename.str().c_str() );
-    TTree* copy_track   = (TTree*)cosmic_track->CloneTree(0);
-    //cosmic_tree_v.push_back( cosmic_track );
+    //TTree* copy_track   = (TTree*)cosmic_track->CloneTree(0);
+    cosmic_tree_v.push_back( cosmic_track );
     data_tree_v.push_back( cosmic_track );
   }
 
@@ -111,12 +116,33 @@ int main( int nargs, char** argv ) {
   std::vector<TTree*> out_mc_v;
 
   for ( auto& ptree : data_tree_v ) {
-    out_data_v.push_back( (TTree*)ptree->CloneTree(0) );
+    try {    
+      TTree* copy_tree = (TTree*)ptree->CloneTree(0);
+      out_data_v.push_back( copy_tree );
+    }
+    catch ( std::exception& e ) {
+      std::cout << "Could not clone data tree: " << ptree << std::endl;
+      std::cout << e.what() << std::endl;
+      std::cout << "name: " << ptree->GetName() << std::endl;
+      return 0;
+    }
   }
 
-  for ( auto& ptree : mc_tree_v ) {
-    out_mc_v.push_back( (TTree*)ptree->CloneTree(0) );
+  if ( HAS_MC ) {
+    for ( auto& ptree : mc_tree_v ) {
+      try {
+	TTree* copy_tree = (TTree*)ptree->CloneTree(0);
+	out_mc_v.push_back( copy_tree );
+      }
+      catch ( std::exception& e ) {
+	std::cout << "Could not clone mc tree: " << ptree << std::endl;
+	std::cout << e.what() << std::endl;
+	std::cout << "name: " << ptree->GetName() << std::endl;
+	return 0;
+      }
+    }
   }
+  
   
   // TTree* out_kpreco_tree = (TTree*)kprecotree->CloneTree(0);
   

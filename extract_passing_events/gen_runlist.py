@@ -11,13 +11,13 @@ DLPRODDIR="/cluster/tufts/wongjiradlab/nutufts/dlgen2prod"
 #inputlist="../maskrcnn_input_filelists/mcc9_v29e_dl_run3_G1_extbnb_dlana_MRCNN_INPUTS_LIST.txt"
 #stem="merged_dlana"
 
-#samplename = "mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge"
-#inputlist=DLPRODDIR+"/run3inputlists/mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge.list"
-#stem="merged_dlreco"
-
-samplename = "mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge"
-inputlist=DLPRODDIR+"/maskrcnn_input_filelists/mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge_MRCNN_INPUTS_LIST.txt"
+samplename = "mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge"
+inputlist=DLPRODDIR+"/run3inputlists/mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge.list"
 stem="merged_dlreco"
+
+#samplename = "mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge"
+#inputlist=DLPRODDIR+"/maskrcnn_input_filelists/mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge_MRCNN_INPUTS_LIST.txt"
+#stem="merged_dlreco"
 
 #samplename = "mcc9jan_run1_bnb5e19"
 #inputlist="../run1inputlists/mcc9_v28_wctagger_bnb5e19_filelist.txt"
@@ -114,6 +114,10 @@ for fileid,data in larflowreco_dict.items():
     kpsreco_ana = data[0]
     kpsreco_larlite = data[1]
     sourcedata = source_dict[fileid]
+
+    # infer larmatch file
+    larmatch = larmatch_outfolder + "/%03d/"%(fileid/100) + os.path.basename(kpsreco_larlite).replace("larflowreco","larmatch_kps")
+    
     # check hash
     h = sourcedata[0]
     if h not in kpsreco_ana or h not in kpsreco_larlite:
@@ -122,8 +126,9 @@ for fileid,data in larflowreco_dict.items():
         print("  kpsreco-ana:     ",os.path.basename(kpsreco_ana))
         print("  kpsreco-larlite: ",os.path.basename(kpsreco_larlite))
         print("  dlmerged:        ",os.path.basename(sourcedata[1]))
+        print("  larmatch:        ",os.path.basename(larmatch))
         sys.exit(0)
-    runlist.append( (fileid,sourcedata[1],kpsreco_ana,kpsreco_larlite) )
+    runlist.append( (fileid,sourcedata[1],kpsreco_ana,kpsreco_larlite,larmatch) )
 
 print("Number of jobs FINISHED: ",NFINISHED)
 print("Number of jobs to run: ",len(runlist))
@@ -131,8 +136,8 @@ print("Number of jobs to run: ",len(runlist))
 foutname="runlist_dlgen2filter_%s.txt"%(samplename)
 print("Making file, %s, with file IDs to run"%(foutname))
 fout = open(foutname,'w')
-for (fileid,dlmerged,kpsana,kpslarlite) in runlist:
-    print("%d %s %s %s"%(fileid,kpsana,dlmerged,kpslarlite),file=fout)
+for (fileid,dlmerged,kpsana,kpslarlite,larmatch) in runlist:
+    print("%d %s %s %s %s"%(fileid,kpsana,dlmerged,kpslarlite,larmatch),file=fout)
 fout.close()
 
 
