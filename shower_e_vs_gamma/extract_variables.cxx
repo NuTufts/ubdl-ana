@@ -19,12 +19,10 @@ int main( int nargs, char** argv ) {
   std::cout << "Apply Gen-2 selection and save isolated events" << std::endl;
   std::cout << "KPSRECO: "<< argv[1] << std::endl;
   std::cout << "LARCV: " << argv[2] << std::endl;
-  //std::cout << "KPS LARLITE: " << argv[3] << std::endl;
   std::cout << "OUTFILE: " << argv[3] << std::endl;  
   
   std::string input_kpsreco   = argv[1];
   std::string input_larcv     = argv[2];
-  //std::string input_larlite   = argv[3];
   std::string output_filename = argv[3];
 
   bool DEBUG = true;
@@ -44,14 +42,10 @@ int main( int nargs, char** argv ) {
   iolcv.add_in_file( input_larcv );
   iolcv.initialize();
     
-  // larlite::storage_manager ioll( larlite::storage_manager::kREAD );
-  // ioll.add_in_filename( input_larlite );
-  // ioll.open();
-
   int nentries = kprecotree->GetEntries();
 
   // output file
-  TFile* out = new TFile("out_extract_shower_variables.root","new");
+  TFile* out = new TFile(output_filename.c_str(),"new");
   larflow::reco::ShowerLikelihoodBuilder builder;
 
   // Analysis classes

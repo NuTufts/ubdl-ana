@@ -11,3 +11,10 @@ Strategies to develop:
   3. missed 2nd shower pi0 metric
   4. shower likelihood
 
+## Shower likelihood profile
+
+Workflow:
+
+  1. Make perfect reco file for perfect reco showers
+  2. Run shower likelihood code to make profile histograms
+
