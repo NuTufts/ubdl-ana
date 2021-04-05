@@ -149,9 +149,10 @@ int main( int nargs, char** argv ) {
          kRecoFV,         // [10] reco fv cut
          kShowerLLCut,    // [11] shower likelihood cut         
          kWCPixel,        // [12] Wire-Cell pixel cut
-         kHadronic,       // [13] see hadronic particles (proton or vertex activity)         
-         kAllCuts,        // [14] All cuts applied except FV -- represents reco pass rate
-         kNumCuts };      // [15] Number in enum
+         kHadronic,       // [13] see hadronic particles (proton or vertex activity)
+         kUnrecoQ,        // [14] how much of the in-time pixels have been used
+         kAllCuts,        // [15] All cuts applied except FV -- represents reco pass rate
+         kNumCuts };      // [16] Number in enum
   std::vector<std::string> selcut_names
     = { "fv",             // [0]
         "vertexcand",     // [1]
@@ -166,9 +167,10 @@ int main( int nargs, char** argv ) {
         "showerll",       // [10]        
         "recofv",         // [11]
         "wcpixel",        // [12]        
-        "hadronic",       // [13]        
-        "allreco",        // [14]
-        "numcuts"};       // [15]
+        "hadronic",       // [13]
+        "unrecoq",        // [14]
+        "allreco",        // [15]
+        "numcuts"};       // [16]
 
   // Cut variables for studying optimal cuts
   enum { kdwall=0, // [0]
@@ -190,7 +192,8 @@ int main( int nargs, char** argv ) {
          knplanesconnected,     // [17]
          kminconnectpass,       // [18]
          ksecondshowersize,     // [19]
-         kNumCutVariables };    // [20]         
+         kunrecoqmedfrac,       // [20]
+         kNumCutVariables };    // [21]         
          
   std::vector<std::string> cutvar_names
     = { "dwall", //0
@@ -211,9 +214,10 @@ int main( int nargs, char** argv ) {
         "closestshoweravedqdx", // [16]
         "nplanesconnected",     // [17]
         "minconnectpass",       // [18]
-        "secondshowersize"      // [19]
+        "secondshowersize",     // [19]
+        "unrecoqmedfrac"        // [20]
   };
-  float cutvar_range[20][2] = { {-10,200},  // [0] dwall
+  float cutvar_range[21][2] = { {-10,200},  // [0] dwall
                                 {0, 50 },   // [1] distance to true vertex
                                 {0, 10000}, // [2] hits in largest shower
                                 {0, 10},    // num shower prongs
@@ -231,9 +235,10 @@ int main( int nargs, char** argv ) {
                                 {0,200},    // closest shower ave dqdx
                                 {0,4},      // num connected planes
                                 {0,4},      // num connected planes
-                                {0,10000}   // [18] second shower size
+                                {0,10000},  // [19] second shower size
+                                {0,1.0}     // [20] unreco charge, median fraction
   };
-  int cutvar_nbins[20] = { 210, // [0] dwall
+  int cutvar_nbins[21] = { 210, // [0] dwall
                            150, // [1] dist 2 true
                            100, // [2] hits in largest shower
                            10,  // [3] num shower prongs
@@ -251,7 +256,8 @@ int main( int nargs, char** argv ) {
                            100, // [15] closest shower ave dqdx
                            4,   // [16] nplanes connected
                            4,   // [17] min connected pass among planes
-                           100  // [18] second shower size
+                           100, // [18] second shower size
+                           20   // [20] unreco charge, median fraction
   };
 
   // dq/dx plots: we will fill for vtx that passes vertex activity cuts
@@ -433,20 +439,31 @@ int main( int nargs, char** argv ) {
       vtx_pass[kShowerGap]     = nusel.nplanes_connected>=2; // [5]
       vtx_pass[kTrackGap]      = (nusel.ntracks==0 || nusel.min_track_gap<3.0); // [6]
       vtx_pass[kMaxTrackLen]   = (nusel.ntracks==0 || nusel.max_track_length<300.0); // [7]
-      vtx_pass[kSecondShower]  = (nhits_second_shower<100);
-      vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0); // [8]      
-      vtx_pass[kRecoFV]        = (reco_dwall>5.0); // [9]
+      vtx_pass[kSecondShower]  = (nhits_second_shower<100); // [8]
+      vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0); // [9]      
+      vtx_pass[kRecoFV]        = (reco_dwall>5.0); // [10]
 
-      //vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 ); // [12]
-      vtx_pass[kShowerLLCut]   = (nusel.largest_shower_avedqdx > 20.0 && nusel.largest_shower_avedqdx>20 );
-      //vtx_pass[kShowerLLCut]   = true; // [12] pass for study      
+      //vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 ); // [11]
+      vtx_pass[kShowerLLCut]   = (nusel.largest_shower_avedqdx > 20.0 && nusel.largest_shower_avedqdx>20 ); // [11]
+      //vtx_pass[kShowerLLCut]   = true; // [11] pass for study      
 
-      vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5); // [10]
+      vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5); // [12]
       
-      //vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5); // [11]
-      vtx_pass[kHadronic]      = (nusel.max_proton_pid<100 && nusel.vertex_hip_fraction>0.05) || (nusel.max_track_length<=3.0 && nusel.vertex_charge_per_pixel>50.0 );;
-      //vtx_pass[kHadronic]      = true; // [11] pass for study
+      //vtx_pass[kHadronic]      = (nusel.max_proton_pid<0 || nusel.vertex_hip_fraction>0.5); // [13]
+      vtx_pass[kHadronic]      = (nusel.max_proton_pid<100 && nusel.vertex_hip_fraction>0.05) || (nusel.max_track_length<=3.0 && nusel.vertex_charge_per_pixel>50.0 ); // [13]
+      //vtx_pass[kHadronic]      = true; // [13] pass for study
 
+      // [14] Unreconstructed pixel fraction cut
+      std::vector<float> unrecoq_v = nusel.unreco_fraction_v;
+      float unrecoq_medfrac = 0.;
+      std::sort( unrecoq_v.begin(), unrecoq_v.end() );
+      if ( unrecoq_v.size()<3 )
+        vtx_pass[kUnrecoQ]       = true;
+      else {
+        vtx_pass[kUnrecoQ]       = (unrecoq_v[1]<0.5);
+        unrecoq_medfrac = unrecoq_v[1];
+      }
+      
       vtx_pass[kAllCuts]       = true;
 
       // reco variable cuts only
@@ -502,6 +519,7 @@ int main( int nargs, char** argv ) {
         hvariable_good_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
         hvariable_good_v[knplanesconnected]->Fill( nusel.nplanes_connected );
         hvariable_good_v[kminconnectpass]->Fill( min_connected_pass );
+        hvariable_good_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );
       }
       else {
         
@@ -524,7 +542,7 @@ int main( int nargs, char** argv ) {
         hvariable_bad_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
         hvariable_bad_v[knplanesconnected]->Fill( nusel.nplanes_connected );
         hvariable_bad_v[kminconnectpass]->Fill( min_connected_pass );
-        
+        hvariable_bad_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );        
       }
 
       // Cut variables: study correlation between reco state:
@@ -561,7 +579,7 @@ int main( int nargs, char** argv ) {
         hvar_onnu[vtx_reco_state][kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
         hvar_onnu[vtx_reco_state][knplanesconnected]->Fill( nusel.nplanes_connected );
         hvar_onnu[vtx_reco_state][kminconnectpass]->Fill( min_connected_pass );
-        
+        hvar_onnu[vtx_reco_state][kunrecoqmedfrac]->Fill( unrecoq_medfrac );        
       }
 
       // dQ/dx plots: need to save dqdx data, which didnt ..
