@@ -4,17 +4,18 @@ rt.gStyle.SetOptStat(0)
 
 rt.gStyle.SetHistTopMargin(0)
 
-#pot = 4.5e19
-pot = 1e20
+pot = 4.5e19
+#pot = 1e20
 
-ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_newgap_merged.root",
-          "intrinsicnue":"plots_1e1p_sel_intrinsic_newgap_merged.root"}
+ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_v1reco.root",
+          "intrinsicnue":"plots_1e1p_sel_intrinsic_v1reco.root"}
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
-fpot = {"bnbnu":5.163410946e+19,
-        "intrinsicnue":4.597582955e+22}
-fill_order = ["intrinsicnue","bnbnu"]
+fpot = {"bnbnu":5.409417753e+19,
+        "intrinsicnue":4.4204107333999975e+22}
+#fill_order = ["intrinsicnue","bnbnu"]
 #fill_order = ["bnbnu"]
+fill_order = ["intrinsicnue"]
 
 sample_names = [ "is1eVA","1e1p","all" ]
 
@@ -36,7 +37,8 @@ cutvar_names  = [ "dwall",
                   "largestshowerll",
                   "closestshowerll",
                   "largestshoweravedqdx",
-                  "closestshoweravedqdx" ]
+                  "closestshoweravedqdx",
+                  "unrecoqmedfrac"]
 
 
 mode_names = ["ccqe",
