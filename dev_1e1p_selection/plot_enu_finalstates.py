@@ -7,13 +7,13 @@ rt.gStyle.SetOptStat(0)
 pot = 1e20
 
 ftypes = {"bnbnu":"plots_final_states_bnbnu_run3_merged.root",
-          "intrinsicnue":"plots_1e1p_sel_intrinsic_newgap_merged.root"}
+          "intrinsicnue":"plots_final_states_intrinsic_merged.root"}
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
 fpot = {"bnbnu":2.2610676018999955e+20,
         "intrinsicnue":4.597582955e+22}
-#fill_order = ["intrinsicnue","bnbnu"]
-fill_order = ["bnbnu"]
+fill_order = ["intrinsicnue","bnbnu"]
+#fill_order = ["bnbnu"]
 
 finalstate_names = [ "1eVA",
                      "1e_1p_0pi_nopi0",  "1e_0p_1pi_nopi0", "1e_0p_0pi_wpi0",
@@ -37,6 +37,9 @@ print finalstate_colors
 nu_symbols = {"intrinsicnue":"#nu_{e}",
               "bnbnu":"#nu_{#mu}",
               "nc":"#nu"}
+nu_styles = {"intrinsicnue":1001,
+             "bnbnu":3001,
+             "nc":3144}
 
 mode_names = ["all"]
 mode_styles = {"ccqe":1001,
@@ -79,7 +82,7 @@ for mode in mode_names:
             h = rfile[nutype].Get( hname )
             #h.SetFillColor(fcolors[nutype])
             h.SetFillColor( finalstate_colors[ifs] )
-            h.SetFillStyle(mode_styles[mode])
+            h.SetFillStyle( nu_styles[nutype] )
             scale = pot/fpot[nutype]
             h.Scale(scale)
             #print nutype," ",s," ",mode,": ",h.Integral()
@@ -94,9 +97,9 @@ for mode in mode_names:
             print nutype," ",fs," ",mode," allreco: ",h.Integral(),": ",h.Integral(1,h.GetXaxis().FindBin(500))
             if h.Integral()>0 and mode=="all":
                 if "nc" in mode:
-                    tlen.AddEntry(h,"%s:%s"%( nu_symbols["nc"],fs),"F")
+                    tlen.AddEntry(h,"%s:%s (%.1f)"%( nu_symbols["nc"],fs,h.Integral()),"F")
                 else:
-                    tlen.AddEntry(h,"%s:%s"%( nu_symbols[nutype],fs),"F")
+                    tlen.AddEntry(h,"%s:%s (%.1f)"%( nu_symbols[nutype],fs,h.Integral()),"F")
             hists[(nutype,fs,mode)] = h
             
     hstack.Draw("hist")
@@ -107,6 +110,7 @@ for mode in mode_names:
     canvas[mode].Draw()
     hstack_v[mode] = hstack
     canvas[mode].Update()
+    canvas[mode].SaveAs("cplotenu_%s.png"%(mode))
     tlen_v.append(tlen)
     raw_input()
     

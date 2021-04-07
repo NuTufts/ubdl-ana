@@ -5,11 +5,14 @@ rt.gStyle.SetOptStat(0)
 pot = 5.0e19
 #pot = 1e20
 
-ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_v1reco.root",
-          "intrinsicnue":"plots_1e1p_sel_intrinsic_v1reco.root"}
+#ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_v1reco.root",
+#          "intrinsicnue":"plots_1e1p_sel_intrinsic_v1reco.root"}
+ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_v1reco_1trackmin.root",
+          "intrinsicnue":"plots_1e1p_sel_intrinsic_v1reco_1trackmin.root"}
+
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
-fpot = {"bnbnu":5.409417753e+19,
+fpot = {"bnbnu":1.9611765276e+20,
         "intrinsicnue":4.4204107333999975e+22}
 fill_order = ["intrinsicnue","bnbnu"]
 #fill_order = ["bnbnu"]
