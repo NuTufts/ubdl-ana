@@ -302,8 +302,8 @@ int main( int nargs, char** argv ) {
   };
   
   // Efficiency versus Enu
-  TH1D* henu[nsamples][kNumCuts][kNumModes]      = {0};
-  TH1D* henu_eff[nsamples][kNumCuts][kNumModes]  = {0};      
+  TH1D* henu[nsamples][kNumCuts][kNumModes]      = {0}; // for plotting Enu
+  TH1D* henu_eff[nsamples][kNumCuts][kNumModes]  = {0}; // for plotting Eff
   for (int isample=0; isample<nsamples; isample++) {
     for (int icut=0; icut<kNumCuts; icut++) {
       for (int imode=0; imode<kNumModes; imode++) {
@@ -411,7 +411,7 @@ int main( int nargs, char** argv ) {
 
     }
     else {
-      event_mode = -1;
+      event_mode = kAllModes;
     }
       
     
@@ -514,6 +514,9 @@ int main( int nargs, char** argv ) {
         if ( nusel.plane_connected_on_pass[p]>0 && nusel.plane_connected_on_pass[p]<min_connected_pass )
           min_connected_pass = nusel.plane_connected_on_pass[p];
       }
+
+      // shower reco charge
+      
 
       // Cut variables: study between "good" or "bad" vertex
       if ( nusel.dist2truevtx<2.0 || is_mc==0 ) {
@@ -641,7 +644,7 @@ int main( int nargs, char** argv ) {
     
     // Event-based plots
 
-    // Enu filled based on if vertex passes cut stage
+    // Eff vs. Enu true filled based on if vertex passes cut stage
     bool still_passing = true;
     for (int icut=0; icut<=(int)kAllCuts; icut++) {
       still_passing = still_passing & event_passes_cut[icut];
@@ -652,17 +655,17 @@ int main( int nargs, char** argv ) {
       if ( is_mc==1 ) {
         // 1eVA
         if ( is1l0p0pi==1 && evis_had>30.0 ) {
-          henu[k1eVA][icut][kAllModes]->Fill( Enu_true );
+          //henu[k1eVA][icut][kAllModes]->Fill( Enu_true );
           henu_eff[k1eVA][icut][kAllModes]->Fill( Enu_true );
-          henu[k1eVA][icut][event_mode]->Fill( Enu_true );
+          //henu[k1eVA][icut][event_mode]->Fill( Enu_true );
           henu_eff[k1eVA][icut][event_mode]->Fill( Enu_true );        
         }
         
         // 1e1p
         if ( is1l1p0pi==1 ) {
-          henu[k1e1p][icut][kAllModes]->Fill( Enu_true );
+          //henu[k1e1p][icut][kAllModes]->Fill( Enu_true );
           henu_eff[k1e1p][icut][kAllModes]->Fill( Enu_true );
-          henu[k1e1p][icut][event_mode]->Fill( Enu_true );
+          //henu[k1e1p][icut][event_mode]->Fill( Enu_true );
           henu_eff[k1e1p][icut][event_mode]->Fill( Enu_true );                
         }
       }
@@ -672,7 +675,7 @@ int main( int nargs, char** argv ) {
       henu_eff[kAll][icut][kAllModes]->Fill( Enu_true );
       henu[kAll][icut][event_mode]->Fill( Enu_true );
       henu_eff[kAll][icut][event_mode]->Fill( Enu_true );                      
-    }
+    }//end of loop over cut sequence
 
     // nshowerhits: temporary proxy for neutrino energy
     if ( index_by_dist_v.size()>0 ) {
@@ -707,19 +710,19 @@ int main( int nargs, char** argv ) {
       }
 
       
-    }
+    }//end of if passing vertex
     
     // std::cout << "[entry] to continue." << std::endl;
     // std::cin.get();
     
   }//end of entry loop
 
-  // efficiency
-  for (int i=0; i<nsamples; i++) {
-    for (int j=0; j<kAllCuts; j++) {
-      henu_eff[i][j][kAllModes]->Divide( henu[i][kFV][kAllModes] );
-    }
-  }
+  // efficiency: divide at time of plotting
+  // for (int i=0; i<nsamples; i++) {
+  //   for (int j=0; j<kAllCuts; j++) {
+  //     henu_eff[i][j][kAllModes]->Divide( henu[i][kFV][kAllModes] );
+  //   }
+  // }
   
   out->Write();
   delete in;
