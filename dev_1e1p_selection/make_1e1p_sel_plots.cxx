@@ -387,7 +387,7 @@ int main( int nargs, char** argv ) {
 
     // which mode are we
     int event_mode = 0;
-    if ( is_mc ) {
+    if ( is_mc==1 ) {
       if ( ccnc==0 ) {
         // charged current
         if ( interactionType==1001 )
