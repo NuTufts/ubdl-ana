@@ -19,7 +19,7 @@
 container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/ubdl_depsonly_py3.6.11_u16.04_cu11_pytorch1.7.1.simg
 RUN_DLANA_DIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/dev_1e1p_selection/
 OFFSET=0
-STRIDE=600
+STRIDE=100
 
 SAMPLE_NAME=mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge
 INPUTFILE=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/dev_1e1p_selection/intrinsic_v1.txt

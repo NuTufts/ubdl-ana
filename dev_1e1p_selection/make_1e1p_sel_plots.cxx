@@ -438,7 +438,7 @@ int main( int nargs, char** argv ) {
       vtx_pass[kNTrackProngs]  = ( nusel.ntracks<=2 ); // [4]
       vtx_pass[kShowerGap]     = nusel.nplanes_connected>=2; // [5]
       vtx_pass[kTrackGap]      = (nusel.ntracks==0 || nusel.min_track_gap<3.0); // [6]
-      vtx_pass[kMaxTrackLen]   = (nusel.ntracks==0 || nusel.max_track_length<300.0); // [7]
+      vtx_pass[kMaxTrackLen]   = (nusel.ntracks>=1 && nusel.max_track_length<300.0); // [7]
       vtx_pass[kSecondShower]  = (nhits_second_shower<100); // [8]
       vtx_pass[kVertexAct]     = (nusel.max_track_length>3.0 || nusel.vertex_charge_per_pixel>50.0); // [9]      
       vtx_pass[kRecoFV]        = (reco_dwall>5.0); // [10]
