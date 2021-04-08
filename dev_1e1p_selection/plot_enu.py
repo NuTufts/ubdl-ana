@@ -2,17 +2,21 @@ import os,sys
 import ROOT as rt
 rt.gStyle.SetOptStat(0)
 
-#pot = 4.5e19
-pot = 1e20
+pot = 5.0e19
+#pot = 1e20
 
-ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_newgap_merged.root",
-          "intrinsicnue":"plots_1e1p_sel_intrinsic_newgap_merged.root"}
+#ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_v1reco.root",
+#          "intrinsicnue":"plots_1e1p_sel_intrinsic_v1reco.root"}
+ftypes = {"bnbnu":"plots_1e1p_sel_bnbnu_run3_v1reco_1trackmin.root",
+          "intrinsicnue":"plots_1e1p_sel_intrinsic_v1reco_1trackmin.root"}
+
 fcolors = {"intrinsicnue":rt.kRed-3,
            "bnbnu":rt.kBlue-3}
-fpot = {"bnbnu":2.2610676018999955e+20,
-        "intrinsicnue":4.597582955e+22}
+fpot = {"bnbnu":1.9611765276e+20,
+        "intrinsicnue":4.4204107333999975e+22}
 fill_order = ["intrinsicnue","bnbnu"]
 #fill_order = ["bnbnu"]
+#fill_order = ["intrinsicnue"]
 
 sample_names = [ "is1eVA","1e1p","all" ]
 mode_names = ["ccqe",
@@ -74,7 +78,7 @@ for s in sample_names:
                 all_tot += h.Integral()
                 #print "  all <=500 Mev: ",h.Integral(1,h.GetXaxis().FindBin(500))
             #if nutype in ["intrinsicnue"]:
-            print nutype," ",s," ",mode,": ",h.Integral()," low-E: ",h.Integral(1,h.GetXaxis().FindBin(500))
+            print nutype," ",s," ",mode,": ",h.Integral()," low-E (<500 MeV): ",h.Integral(1,h.GetXaxis().FindBin(450))
             if h.Integral()>0 and mode!="all":
                 if "nc" in mode:
                     tlen.AddEntry(h,"%s:%s"%( nu_symbols["nc"],mode),"F")
@@ -90,6 +94,7 @@ for s in sample_names:
     canvas[s].Draw()
     hstack_v[s] = hstack
     canvas[s].Update()
+    canvas[s].SaveAs("cplotenu_%s.png"%(s))
     tlen_v.append(tlen)
     raw_input()
     

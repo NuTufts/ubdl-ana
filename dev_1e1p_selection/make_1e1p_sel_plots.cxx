@@ -20,6 +20,9 @@ int main( int nargs, char** argv ) {
   input_list >> zinput;
 
   int is_bnbnu = std::atoi(argv[2]);
+  int is_mc = 0;
+  if ( nargs>=4 )
+    is_mc = std::atoi(argv[3]);
 
   bool DEBUG = false;
   
@@ -378,30 +381,38 @@ int main( int nargs, char** argv ) {
     in->GetEntry(ientry);
 
     // truth cuts
-    bool cut_fv = vtx_dwall>10.0;
+    bool cut_fv = true;
+    if ( is_mc==1 )
+      cut_fv = vtx_dwall>10.0;
 
     // which mode are we
     int event_mode = 0;
-    if ( ccnc==0 ) {
-      // charged current
-      if ( interactionType==1001 )
-        event_mode = kCCQE;
-      else if (  interactionType>=1003 && interactionType<=1090 )
-        event_mode = kCCRes;
-      else
-        event_mode = kCCOther;
+    if ( is_mc ) {
+      if ( ccnc==0 ) {
+        // charged current
+        if ( interactionType==1001 )
+          event_mode = kCCQE;
+        else if (  interactionType>=1003 && interactionType<=1090 )
+          event_mode = kCCRes;
+        else
+          event_mode = kCCOther;
+      }
+      else {
+        if ( interactionType==1002 )
+          event_mode = kNCQE;
+        else if (  interactionType>=1003 && interactionType<=1090 )
+          event_mode = kNCRes;
+        else
+          event_mode = kNCOther;
+      }
+      
+      if ( is_bnbnu==1 && abs(nu_pdg)==12 && ccnc==0 )
+        continue; // omit nue-CC events from bnb nu histograms
+
     }
     else {
-      if ( interactionType==1002 )
-        event_mode = kNCQE;
-      else if (  interactionType>=1003 && interactionType<=1090 )
-        event_mode = kNCRes;
-      else
-        event_mode = kNCOther;
+      event_mode = -1;
     }
-
-    if ( is_bnbnu==1 && abs(nu_pdg)==12 && ccnc==0 )
-      continue; // omit nue-CC events from bnb nu histograms
       
     
     // find best reco vertex at each cut stage, measured by closeness to true vertex
@@ -432,7 +443,14 @@ int main( int nargs, char** argv ) {
       // selection cuts
       std::vector<bool> vtx_pass( kNumCuts, false );
       vtx_pass[kFV] = cut_fv; // [0]
-      vtx_pass[kVertexCand3cm] = nusel.dist2truevtx<3.0; // [1]
+
+      if ( is_mc==1 ) {
+        vtx_pass[kVertexCand3cm] = nusel.dist2truevtx<3.0; // [1] mc event
+      }
+      else {
+        vtx_pass[kVertexCand3cm] = true; // [1] data event
+      }
+      
       vtx_pass[kMinShowerSize] = nusel.max_shower_nhits>500; // [2]
       vtx_pass[kNShowerProngs] = ( nusel.nshowers>0 && nusel.nshowers<=2 ); // [3]
       vtx_pass[kNTrackProngs]  = ( nusel.ntracks<=2 ); // [4]
@@ -498,10 +516,11 @@ int main( int nargs, char** argv ) {
       }
 
       // Cut variables: study between "good" or "bad" vertex
-      if ( nusel.dist2truevtx<2.0 ) {
+      if ( nusel.dist2truevtx<2.0 || is_mc==0 ) {
         
         hvariable_good_v[kdwall]->Fill( vtx_dwall );
-        hvariable_good_v[kdist2true]->Fill( nusel.dist2truevtx );
+        if (is_mc==1)
+          hvariable_good_v[kdist2true]->Fill( nusel.dist2truevtx );
         hvariable_good_v[kmaxshowerhits]->Fill( nusel.max_shower_nhits );
         hvariable_good_v[knshowerprongs]->Fill( nusel.nshowers );
         hvariable_good_v[kntrackprongs]->Fill( nusel.ntracks );
@@ -549,19 +568,22 @@ int main( int nargs, char** argv ) {
       // on vertex, off-vertex nu, off-vertex cosmic
       // determine state
       int vtx_reco_state = 0;
-      if ( nusel.dist2truevtx<3.0 ) {
-        vtx_reco_state  = (int)kOnVertex;
-      }
-      else {
-        if ( nusel.truth_vtxFracNu>0.65 )
-          vtx_reco_state = (int)kOnNu;
-        else
-          vtx_reco_state = (int)kOffNu;
+      if ( is_mc==1 ) {
+        if ( nusel.dist2truevtx<3.0 ) {
+          vtx_reco_state  = (int)kOnVertex;
+        }
+        else {
+          if ( nusel.truth_vtxFracNu>0.65 )
+            vtx_reco_state = (int)kOnNu;
+          else
+            vtx_reco_state = (int)kOffNu;
+        }
       }
 
       if ( vtx_pass[kAllCuts] ) {
         hvar_onnu[vtx_reco_state][kdwall]->Fill( vtx_dwall );
-        hvar_onnu[vtx_reco_state][kdist2true]->Fill( nusel.dist2truevtx );
+        if ( is_mc==1 )
+          hvar_onnu[vtx_reco_state][kdist2true]->Fill( nusel.dist2truevtx );
         hvar_onnu[vtx_reco_state][kmaxshowerhits]->Fill( nusel.max_shower_nhits );
         hvar_onnu[vtx_reco_state][knshowerprongs]->Fill( nusel.nshowers );
         hvar_onnu[vtx_reco_state][kntrackprongs]->Fill( nusel.ntracks );
@@ -627,20 +649,22 @@ int main( int nargs, char** argv ) {
       if ( !still_passing )
         break;
 
-      // 1eVA
-      if ( is1l0p0pi==1 && evis_had>30.0 ) {
-        henu[k1eVA][icut][kAllModes]->Fill( Enu_true );
-        henu_eff[k1eVA][icut][kAllModes]->Fill( Enu_true );
-        henu[k1eVA][icut][event_mode]->Fill( Enu_true );
-        henu_eff[k1eVA][icut][event_mode]->Fill( Enu_true );        
-      }
-
-      // 1e1p
-      if ( is1l1p0pi==1 ) {
-        henu[k1e1p][icut][kAllModes]->Fill( Enu_true );
-        henu_eff[k1e1p][icut][kAllModes]->Fill( Enu_true );
-        henu[k1e1p][icut][event_mode]->Fill( Enu_true );
-        henu_eff[k1e1p][icut][event_mode]->Fill( Enu_true );                
+      if ( is_mc==1 ) {
+        // 1eVA
+        if ( is1l0p0pi==1 && evis_had>30.0 ) {
+          henu[k1eVA][icut][kAllModes]->Fill( Enu_true );
+          henu_eff[k1eVA][icut][kAllModes]->Fill( Enu_true );
+          henu[k1eVA][icut][event_mode]->Fill( Enu_true );
+          henu_eff[k1eVA][icut][event_mode]->Fill( Enu_true );        
+        }
+        
+        // 1e1p
+        if ( is1l1p0pi==1 ) {
+          henu[k1e1p][icut][kAllModes]->Fill( Enu_true );
+          henu_eff[k1e1p][icut][kAllModes]->Fill( Enu_true );
+          henu[k1e1p][icut][event_mode]->Fill( Enu_true );
+          henu_eff[k1e1p][icut][event_mode]->Fill( Enu_true );                
+        }
       }
 
       // All
@@ -661,21 +685,25 @@ int main( int nargs, char** argv ) {
       hshower_vs_evislep[kAll]->Fill( evis_lep, num_shr_hits );
       henu[kAll][kAllCuts][kAllModes]->Fill( Enu_true );
       henu[kAll][kAllCuts][event_mode]->Fill( Enu_true );      
-				 
-      if ( is1l0p0pi==1 && evis_had>30.0 ) {
-        hnshower[k1eVA]->Fill( num_shr_hits );
-	hshower_vs_enu[k1eVA]->Fill( Enu_true, num_shr_hits );
-	hshower_vs_evislep[k1eVA]->Fill( evis_lep, num_shr_hits );
-        henu[k1eVA][kAllCuts][kAllModes]->Fill( Enu_true );        
-        henu[k1eVA][kAllCuts][event_mode]->Fill( Enu_true );
-      }
+
+      if ( is_mc==1 ) {
+
+        if ( is1l0p0pi==1 && evis_had>30.0 ) {
+          hnshower[k1eVA]->Fill( num_shr_hits );
+          hshower_vs_enu[k1eVA]->Fill( Enu_true, num_shr_hits );
+          hshower_vs_evislep[k1eVA]->Fill( evis_lep, num_shr_hits );
+          henu[k1eVA][kAllCuts][kAllModes]->Fill( Enu_true );        
+          henu[k1eVA][kAllCuts][event_mode]->Fill( Enu_true );
+        }
       
-      if ( is1l1p0pi==1 ) {
-        hnshower[k1e1p]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );
-	hshower_vs_enu[k1e1p]->Fill( Enu_true, num_shr_hits );
-	hshower_vs_evislep[k1e1p]->Fill( evis_lep, num_shr_hits );
-        henu[k1e1p][kAllCuts][kAllModes]->Fill( Enu_true );        
-        henu[k1e1p][kAllCuts][event_mode]->Fill( Enu_true );        
+        if ( is1l1p0pi==1 ) {
+          hnshower[k1e1p]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );
+          hshower_vs_enu[k1e1p]->Fill( Enu_true, num_shr_hits );
+          hshower_vs_evislep[k1e1p]->Fill( evis_lep, num_shr_hits );
+          henu[k1e1p][kAllCuts][kAllModes]->Fill( Enu_true );        
+          henu[k1e1p][kAllCuts][event_mode]->Fill( Enu_true );        
+        }
+        
       }
 
       

@@ -1,2 +1,4 @@
 make_1e1p_sel_plots
 make_finalstate_plots
+*.so
+*.o
