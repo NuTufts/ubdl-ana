@@ -9,6 +9,7 @@
 
 #include "larflow/Reco/NuSelectionVariables.h"
 #include "larflow/Reco/NuVertexCandidate.h"
+#include "larflow/Reco/NuSelCosmicTagger.h"
 #include "ublarcvapp/ubdllee/dwall.h"
 
 int main( int nargs, char** argv ) {
@@ -154,8 +155,9 @@ int main( int nargs, char** argv ) {
          kWCPixel,        // [12] Wire-Cell pixel cut
          kHadronic,       // [13] see hadronic particles (proton or vertex activity)
          kUnrecoQ,        // [14] how much of the in-time pixels have been used
-         kAllCuts,        // [15] All cuts applied except FV -- represents reco pass rate
-         kNumCuts };      // [16] Number in enum
+         kCosmicTag,      // [15] cosmic tagging cuts
+         kAllCuts,        // [16] All cuts applied except FV -- represents reco pass rate
+         kNumCuts };      // [17] Number in enum
   std::vector<std::string> selcut_names
     = { "fv",             // [0]
         "vertexcand",     // [1]
@@ -172,8 +174,9 @@ int main( int nargs, char** argv ) {
         "wcpixel",        // [12]        
         "hadronic",       // [13]
         "unrecoq",        // [14]
-        "allreco",        // [15]
-        "numcuts"};       // [16]
+        "cosmictag",      // [15]
+        "allreco",        // [16]
+        "numcuts"};       // [17]
 
   // Cut variables for studying optimal cuts
   enum { kdwall=0, // [0]
@@ -263,6 +266,13 @@ int main( int nargs, char** argv ) {
                            20   // [20] unreco charge, median fraction
   };
 
+
+  //=========================================
+  // Algorithms
+  // -----------
+  larflow::reco::NuSelCosmicTagger cosmictagger;
+  cosmictagger.set_verbosity(larcv::msg::kDEBUG);
+  
   // dq/dx plots: we will fill for vtx that passes vertex activity cuts
   // TH2D* hdqdx_shower_good = new TH2D("hdqdx_shower_good","",
   //                                    200, 0, 10.0,
@@ -421,8 +431,8 @@ int main( int nargs, char** argv ) {
     int nvtx = (int)(*pnu_sel_v).size();
     for (int ivtx=0; ivtx<nvtx; ivtx++) {
 
-      auto const& nusel = (*pnu_sel_v)[ivtx];
-      auto const& nuvtx = (*pnu_fitted_v)[ivtx];
+      auto & nusel = (*pnu_sel_v)[ivtx];
+      auto & nuvtx = (*pnu_fitted_v)[ivtx];
 
       EventDist2True_t idx( nusel.dist2truevtx, ivtx );
 
@@ -439,6 +449,9 @@ int main( int nargs, char** argv ) {
         std::sort( nhit_shower_v.begin(), nhit_shower_v.end() );
         nhits_second_shower = nhit_shower_v[1];
       }
+
+      // cosmic tagger
+      cosmictagger.analyze( nuvtx, nusel );
 
       // selection cuts
       std::vector<bool> vtx_pass( kNumCuts, false );
@@ -481,10 +494,26 @@ int main( int nargs, char** argv ) {
         vtx_pass[kUnrecoQ]       = (unrecoq_v[1]<0.5);
         unrecoq_medfrac = unrecoq_v[1];
       }
-      
-      vtx_pass[kAllCuts]       = true;
 
+      // [15] cosmic tagger
+      vtx_pass[kCosmicTag] = true;      
+      if ( nuvtx.track_v.size()>=2 ) {
+        if ( cosmictagger._showercosmictag_maxbacktoback_dwall < 10.0
+             && cosmictagger._showercosmictag_maxbacktoback_costrack < -0.8 ) {
+          vtx_pass[kCosmicTag] = false;
+        }
+      }
+      if ( nuvtx.track_v.size()>=1 ) {
+        if ( cosmictagger._showercosmictag_maxboundarytrack_length>20.0
+             && cosmictagger._showercosmictag_maxboundarytrack_verticalcos<-0.1
+             && cosmictagger._showercosmictag_maxboundarytrack_showercos>0.0 ) {
+          vtx_pass[kCosmicTag] = false;
+        }
+      }
+
+      // set the all cuts flag
       // reco variable cuts only
+      vtx_pass[kAllCuts]       = true;      
       for ( int i=kMinShowerSize; i<kAllCuts; i++)
         vtx_pass[kAllCuts] = vtx_pass[kAllCuts] && vtx_pass[i];
 
