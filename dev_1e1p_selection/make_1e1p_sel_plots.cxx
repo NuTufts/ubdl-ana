@@ -671,9 +671,9 @@ int main( int nargs, char** argv ) {
       }
 
       // All
-      henu[kAll][icut][kAllModes]->Fill( Enu_true );
+      //henu[kAll][icut][kAllModes]->Fill( Enu_true );
       henu_eff[kAll][icut][kAllModes]->Fill( Enu_true );
-      henu[kAll][icut][event_mode]->Fill( Enu_true );
+      //henu[kAll][icut][event_mode]->Fill( Enu_true );
       henu_eff[kAll][icut][event_mode]->Fill( Enu_true );                      
     }//end of loop over cut sequence
 
