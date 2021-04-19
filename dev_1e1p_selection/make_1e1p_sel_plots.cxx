@@ -10,6 +10,7 @@
 #include "larflow/Reco/NuSelectionVariables.h"
 #include "larflow/Reco/NuVertexCandidate.h"
 #include "larflow/Reco/NuSelCosmicTagger.h"
+#include "larflow/Reco/TrackForwardBackwardLL.h"
 #include "ublarcvapp/ubdllee/dwall.h"
 
 int main( int nargs, char** argv ) {
@@ -156,8 +157,9 @@ int main( int nargs, char** argv ) {
          kHadronic,       // [13] see hadronic particles (proton or vertex activity)
          kUnrecoQ,        // [14] how much of the in-time pixels have been used
          kCosmicTag,      // [15] cosmic tagging cuts
-         kAllCuts,        // [16] All cuts applied except FV -- represents reco pass rate
-         kNumCuts };      // [17] Number in enum
+         kBackMuon,       // [16] backward muon track check
+         kAllCuts,        // [17] All cuts applied except FV -- represents reco pass rate
+         kNumCuts };      // [18] Number in enum
   std::vector<std::string> selcut_names
     = { "fv",             // [0]
         "vertexcand",     // [1]
@@ -175,8 +177,9 @@ int main( int nargs, char** argv ) {
         "hadronic",       // [13]
         "unrecoq",        // [14]
         "cosmictag",      // [15]
-        "allreco",        // [16]
-        "numcuts"};       // [17]
+        "backmuon",       // [16]
+        "allreco",        // [17]
+        "numcuts"};       // [18]
 
   // Cut variables for studying optimal cuts
   enum { kdwall=0, // [0]
@@ -199,50 +202,53 @@ int main( int nargs, char** argv ) {
          kminconnectpass,       // [18]
          ksecondshowersize,     // [19]
          kunrecoqmedfrac,       // [20]
-         kNumCutVariables };    // [21]         
+         kbackwardmuonllr,      // [21]
+         kNumCutVariables };    // [22]         
          
   std::vector<std::string> cutvar_names
-    = { "dwall", //0
-        "dist2true",
-        "nmaxshowerhits",
-        "nshowerprongs",
-        "ntrackprongs", 
-        "llpid", //5
-        "hipfraction",
-        "minshowergap",
-        "maxshowergap",
-        "mintrackgap",
-        "maxtracklen",
-        "vertexcharge", //12
-        "largestshowerll",
-        "closestshowerll",
-        "largestshoweravedqdx",
-        "closestshoweravedqdx", // [16]
-        "nplanesconnected",     // [17]
-        "minconnectpass",       // [18]
-        "secondshowersize",     // [19]
-        "unrecoqmedfrac"        // [20]
+    = { "dwall",                // [0]
+        "dist2true",            // [1]
+        "nmaxshowerhits",       // [2]
+        "nshowerprongs",        // [3]
+        "ntrackprongs",         // [4]
+        "llpid",                // [5]
+        "hipfraction",          // [6]
+        "minshowergap",         // [7]
+        "maxshowergap",         // [8]
+        "mintrackgap",          // [9]
+        "maxtracklen",          // [10]
+        "vertexcharge",         // [11]
+        "largestshowerll",      // [12]
+        "closestshowerll",      // [13]
+        "largestshoweravedqdx", // [14]
+        "closestshoweravedqdx", // [15]
+        "nplanesconnected",     // [16]
+        "minconnectpass",       // [17]
+        "secondshowersize",     // [18]
+        "unrecoqmedfrac",       // [19]
+        "backwardmuonllr"       // [20]
   };
   float cutvar_range[21][2] = { {-10,200},  // [0] dwall
                                 {0, 50 },   // [1] distance to true vertex
                                 {0, 10000}, // [2] hits in largest shower
-                                {0, 10},    // num shower prongs
-                                {0, 10},    // num track prongs
-                                {-100,100}, // proton likelihood
-                                {0,1.01},   // hip fraction
-                                {0,50.0},   // minshowergap
-                                {0,50.0},   // maxshowergap
-                                {0,50.0},   // mintrackgap
-                                {0,500},    // maxtracklen
-                                {0,150.0},  // vertex activity: charge per pixel around reco vertex
-                                {-50,110},  // largest shower likelihood
-                                {-50,110},  // largest shower ave dqdx
-                                {0,200},    // closest shower likelihood
-                                {0,200},    // closest shower ave dqdx
-                                {0,4},      // num connected planes
-                                {0,4},      // num connected planes
-                                {0,10000},  // [19] second shower size
-                                {0,1.0}     // [20] unreco charge, median fraction
+                                {0, 10},    // [3] num shower prongs
+                                {0, 10},    // [4] num track prongs
+                                {-100,100}, // [5] proton likelihood
+                                {0,1.01},   // [6] hip fraction
+                                {0,50.0},   // [7] minshowergap
+                                {0,50.0},   // [8] maxshowergap
+                                {0,50.0},   // [9] mintrackgap
+                                {0,500},    // [10] maxtracklen
+                                {0,150.0},  // [11] vertex activity: charge per pixel around reco vertex
+                                {-50,110},  // [12] largest shower likelihood
+                                {-50,110},  // [13] largest shower ave dqdx
+                                {0,200},    // [14] closest shower likelihood
+                                {0,200},    // [15] closest shower ave dqdx
+                                {0,4},      // [16] num connected planes
+                                {0,4},      // [17] num connected planes
+                                {0,10000},  // [18] second shower size
+                                {0,1.0},    // [19] unreco charge, median fraction
+                                {-100,100}  // [20] backward muon LLR
   };
   int cutvar_nbins[21] = { 210, // [0] dwall
                            150, // [1] dist 2 true
@@ -263,7 +269,8 @@ int main( int nargs, char** argv ) {
                            4,   // [16] nplanes connected
                            4,   // [17] min connected pass among planes
                            100, // [18] second shower size
-                           20   // [20] unreco charge, median fraction
+                           20,  // [19] unreco charge, median fraction
+                           51   // [20] backward muon LLR
   };
 
 
@@ -272,6 +279,9 @@ int main( int nargs, char** argv ) {
   // -----------
   larflow::reco::NuSelCosmicTagger cosmictagger;
   cosmictagger.set_verbosity(larcv::msg::kDEBUG);
+
+  larflow::reco::TrackForwardBackwardLL muvsproton;
+  muvsproton.set_verbosity(larcv::msg::kINFO);
   
   // dq/dx plots: we will fill for vtx that passes vertex activity cuts
   // TH2D* hdqdx_shower_good = new TH2D("hdqdx_shower_good","",
@@ -453,6 +463,9 @@ int main( int nargs, char** argv ) {
       // cosmic tagger
       cosmictagger.analyze( nuvtx, nusel );
 
+      // backward muon versus forward proton
+      muvsproton.analyze( nuvtx, nusel );
+
       // selection cuts
       std::vector<bool> vtx_pass( kNumCuts, false );
       vtx_pass[kFV] = cut_fv; // [0]
@@ -509,6 +522,16 @@ int main( int nargs, char** argv ) {
              && cosmictagger._showercosmictag_maxboundarytrack_showercos>0.0 ) {
           vtx_pass[kCosmicTag] = false;
         }
+      }
+
+      // [16] backward muon
+      vtx_pass[kBackMuon] = true;
+      float min_backwardmu_llr = 1000;
+      for ( auto const& llr : muvsproton.best_llr_v ) {
+        if ( llr<0 ) 
+          vtx_pass[kBackMuon] = false;
+        if ( llr < min_backwardmu_llr )
+          min_backwardmu_llr = llr;
       }
 
       // set the all cuts flag
@@ -571,6 +594,7 @@ int main( int nargs, char** argv ) {
         hvariable_good_v[knplanesconnected]->Fill( nusel.nplanes_connected );
         hvariable_good_v[kminconnectpass]->Fill( min_connected_pass );
         hvariable_good_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );
+        hvariable_good_v[kbackwardmuonllr]->Fill( min_backwardmu_llr );
       }
       else {
         
@@ -593,7 +617,8 @@ int main( int nargs, char** argv ) {
         hvariable_bad_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
         hvariable_bad_v[knplanesconnected]->Fill( nusel.nplanes_connected );
         hvariable_bad_v[kminconnectpass]->Fill( min_connected_pass );
-        hvariable_bad_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );        
+        hvariable_bad_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );
+        hvariable_bad_v[kbackwardmuonllr]->Fill( min_backwardmu_llr );        
       }
 
       // Cut variables: study correlation between reco state:
@@ -633,7 +658,8 @@ int main( int nargs, char** argv ) {
         hvar_onnu[vtx_reco_state][kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
         hvar_onnu[vtx_reco_state][knplanesconnected]->Fill( nusel.nplanes_connected );
         hvar_onnu[vtx_reco_state][kminconnectpass]->Fill( min_connected_pass );
-        hvar_onnu[vtx_reco_state][kunrecoqmedfrac]->Fill( unrecoq_medfrac );        
+        hvar_onnu[vtx_reco_state][kunrecoqmedfrac]->Fill( unrecoq_medfrac );
+        hvar_onnu[vtx_reco_state][kbackwardmuonllr]->Fill( min_backwardmu_llr );        
       }
 
       // dQ/dx plots: need to save dqdx data, which didnt ..
