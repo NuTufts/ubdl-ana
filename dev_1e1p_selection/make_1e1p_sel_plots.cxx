@@ -34,6 +34,19 @@ int main( int nargs, char** argv ) {
   if ( nargs>=5 )
     is_mc = std::atoi(argv[4]);
 
+    
+  std::ifstream* mcweight_list = nullptr;
+  char zmcweight[1028];
+  int LEE_MODE = 0;
+  if (is_mc==1 && nargs>=7)  {
+    mcweight_list = new std::ifstream( argv[5] );
+    (*mcweight_list) >> zmcweight;
+    LEE_MODE = argv[6];
+    if ( LEE_MODE==1 ) {
+      std::cout << "RUNNING IN LEE WEIGHT MODE" << std::endl;
+    }
+  }
+
   bool DEBUG = false;
   
   std::vector<std::string> input_v;
@@ -48,9 +61,19 @@ int main( int nargs, char** argv ) {
     dlmerged_list >> zdlmerged;
   } while ( dlmerged_list.good() && !dlmerged_list.eof() );
 
+  std::vector<std::string> mcweight_v;
+  do {
+    mcweight_v.push_back( std::string(zmcweight) );
+    (*mcweight_list) >> zmcweight;
+  } while ( mcweight_list->good() && !mcweight_list->eof() );
+  
   if ( dlmerged_v.size()!=input_v.size() ) {
     std::cout << "number of dlmerged files (" << dlmerged_v.size() << ") does not equal num of ana files (" << input_v.size() << ")" << std::endl;
     return -1;
+  }
+  if ( mcweight_v.size()>0 && input_v.size()!=mcweight_v.size() ) {
+    std::cout << "number of mcweight files (" << mcweight_v.size() << ") does not equal num of ana files (" << input_v.size() << ")" << std::endl;
+    return -1;    
   }
   
   TChain* in = new TChain("KPSRecoManagerTree");
@@ -61,6 +84,17 @@ int main( int nargs, char** argv ) {
     ninputs++;
   }
 
+  TChain* mcw = new TChain("eventweight");
+  if ( mcweight_v.size()>0 ) {
+    for ( auto& mcwinput : mcweight_v ) {
+      mcw->Add( mcwinput.c_str() );
+      std::cout << mcwinput << std::endl;
+    }
+    //std::cout << "ADDED MCWEIGHT TREE AS FRIEND TO INPUT TREE" << std::endl;
+    //in->AddFriend(mcw);
+  }
+
+  
   larcv::IOManager iolcv( larcv::IOManager::kREAD, "larcv", larcv::IOManager::kTickBackward );
   for (auto& fdlmerged : dlmerged_v ) {
     iolcv.add_in_file( fdlmerged );
@@ -69,7 +103,7 @@ int main( int nargs, char** argv ) {
   iolcv.reverse_all_products();
   iolcv.initialize();
   
-  std::cout << "number of files loaded: ana=" << ninputs << " dlmerged=" << dlmerged_v.size() << std::endl;
+  std::cout << "number of files loaded: ana=" << ninputs << " dlmerged=" << dlmerged_v.size() << " mcweight=" << mcweight_v.size() << std::endl;
   
 
   const float vtx_cutoff  = 5.0;
@@ -88,6 +122,10 @@ int main( int nargs, char** argv ) {
   int interactionType;
   int ccnc;
   int nu_pdg;
+
+  double xsec_weight = 1.0;
+  double lee_weight = 1.0;
+  
   if ( is_mc ) {
     in->SetBranchAddress( "Enu_true",  &Enu_true );
     in->SetBranchAddress( "evis_lep",  &evis_lep );  
@@ -99,6 +137,11 @@ int main( int nargs, char** argv ) {
     in->SetBranchAddress( "genieMode", &genie_mode );
     in->SetBranchAddress( "interactionType", &interactionType );
     in->SetBranchAddress( "nu_pdg", &nu_pdg );
+
+    if ( mcweight_v.size()>0 ) {
+      mcw->SetBranchAddress( "xsec_corr_weight", &xsec_weight );
+      mcw->SetBranchAddress( "lee_weight", &lee_weight );
+    }
   }
   
   // Selection variables
@@ -141,6 +184,15 @@ int main( int nargs, char** argv ) {
   nu_shower_kin.set_verbosity( larcv::msg::kDEBUG );
   
   int nentries = in->GetEntries();
+  int mcw_nentries = 0;
+  if ( is_mc==1 && mcweight_v.size()>0 ) {
+    mcw_nentries = mcw->GetEntries();
+    if ( mcw_nentries != nentries ) {
+      std::stringstream errmsg;
+      errmsg << "Number of input entries (" << nentries << ") does not match number of mc weight tree entries (" << mcw_nentries << ")" << std::endl;
+      throw std::runtime_error(errmsg.str());
+    }
+  }
   
   TFile* out = new TFile("plots_1e1p_sel.root","recreate");
 
@@ -453,6 +505,19 @@ int main( int nargs, char** argv ) {
       std::cout << "[ ENTRY " << ientry << "]" << std::endl;
     
     in->GetEntry(ientry);
+    if ( is_mc==1 && mcweight_v.size()>0 && mcw ) {
+      mcw->GetEntry(ientry);
+    }
+    else {
+      xsec_weight = 1.0;
+      lee_weight = 1.0;
+    }
+
+    float event_weight = xsec_weight;
+    if ( LEE_MODE==1 ) {
+      event_weight *= lee_weight;
+    }
+    
     iolcv.read_entry(ientry);
 
     larcv::EventImage2D* ev_img
@@ -679,58 +744,58 @@ int main( int nargs, char** argv ) {
       // Cut variables: study between "good" or "bad" vertex
       if ( nusel.dist2truevtx<2.0 || is_mc==0 ) {
         
-        hvariable_good_v[kdwall]->Fill( vtx_dwall );
+        hvariable_good_v[kdwall]->Fill( vtx_dwall, event_weight );
         if (is_mc==1)
-          hvariable_good_v[kdist2true]->Fill( nusel.dist2truevtx );
-        hvariable_good_v[kmaxshowerhits]->Fill( nusel.max_shower_nhits );
-        hvariable_good_v[knshowerprongs]->Fill( nusel.nshowers );
-        hvariable_good_v[kntrackprongs]->Fill( nusel.ntracks );
-        hvariable_good_v[kllpid]->Fill( nusel.max_proton_pid );
-        hvariable_good_v[khipfraction]->Fill( nusel.vertex_hip_fraction );
-        if ( nusel.nshowers>0 ) hvariable_good_v[kminshowergap]->Fill( nusel.min_shower_gap );
-        if ( nusel.nshowers>0 ) hvariable_good_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
-        if ( nusel.nshowers>0 ) hvariable_good_v[ksecondshowersize]->Fill( (float)nhits_second_shower );
-        if ( nusel.ntracks>0 )  hvariable_good_v[kmintrackgap]->Fill( nusel.min_track_gap );        
-        hvariable_good_v[kmaxtracklen]->Fill( nusel.max_track_length );
-        hvariable_good_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );        
-        hvariable_good_v[klargestshowerll]->Fill( nusel.largest_shower_ll );
-        hvariable_good_v[klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
-        hvariable_good_v[kclosestshowerll]->Fill( nusel.closest_shower_ll );
-        hvariable_good_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
-        hvariable_good_v[knplanesconnected]->Fill( nusel.nplanes_connected );
-        hvariable_good_v[kminconnectpass]->Fill( min_connected_pass );
-        hvariable_good_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );
-        hvariable_good_v[kbackwardmuonllr]->Fill( backwardmu_llr );
-	hvariable_good_v[kleptoncosbeam]->Fill( lepton_cos_beam );
-	hvariable_good_v[kprotoncosbeam]->Fill( track_cos_beam );
-	hvariable_good_v[knusumke]->Fill( nu_sum_KE );		
+          hvariable_good_v[kdist2true]->Fill( nusel.dist2truevtx, event_weight );
+        hvariable_good_v[kmaxshowerhits]->Fill( nusel.max_shower_nhits, event_weight );
+        hvariable_good_v[knshowerprongs]->Fill( nusel.nshowers, event_weight );
+        hvariable_good_v[kntrackprongs]->Fill( nusel.ntracks, event_weight );
+        hvariable_good_v[kllpid]->Fill( nusel.max_proton_pid, event_weight );
+        hvariable_good_v[khipfraction]->Fill( nusel.vertex_hip_fraction, event_weight );
+        if ( nusel.nshowers>0 ) hvariable_good_v[kminshowergap]->Fill( nusel.min_shower_gap, event_weight );
+        if ( nusel.nshowers>0 ) hvariable_good_v[kmaxshowergap]->Fill( nusel.max_shower_gap, event_weight );
+        if ( nusel.nshowers>0 ) hvariable_good_v[ksecondshowersize]->Fill( (float)nhits_second_shower, event_weight );
+        if ( nusel.ntracks>0 )  hvariable_good_v[kmintrackgap]->Fill( nusel.min_track_gap, event_weight );        
+        hvariable_good_v[kmaxtracklen]->Fill( nusel.max_track_length , event_weight );
+        hvariable_good_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel , event_weight );        
+        hvariable_good_v[klargestshowerll]->Fill( nusel.largest_shower_ll , event_weight );
+        hvariable_good_v[klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx , event_weight );
+        hvariable_good_v[kclosestshowerll]->Fill( nusel.closest_shower_ll , event_weight );
+        hvariable_good_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx , event_weight );
+        hvariable_good_v[knplanesconnected]->Fill( nusel.nplanes_connected , event_weight );
+        hvariable_good_v[kminconnectpass]->Fill( min_connected_pass , event_weight );
+        hvariable_good_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac , event_weight );
+        hvariable_good_v[kbackwardmuonllr]->Fill( backwardmu_llr , event_weight );
+	hvariable_good_v[kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
+	hvariable_good_v[kprotoncosbeam]->Fill( track_cos_beam , event_weight );
+	hvariable_good_v[knusumke]->Fill( nu_sum_KE , event_weight );		
       }
       else {
         
-        hvariable_bad_v[kdwall]->Fill( vtx_dwall );
-        hvariable_bad_v[kdist2true]->Fill( nusel.dist2truevtx );
-        hvariable_bad_v[kmaxshowerhits]->Fill( nusel.max_shower_nhits );
-        hvariable_bad_v[knshowerprongs]->Fill( nusel.nshowers );
-        hvariable_bad_v[kntrackprongs]->Fill( nusel.ntracks );
-        hvariable_bad_v[kllpid]->Fill( nusel.max_proton_pid );
-        hvariable_bad_v[khipfraction]->Fill( nusel.vertex_hip_fraction );
-        if ( nusel.nshowers>0 ) hvariable_bad_v[kminshowergap]->Fill( nusel.min_shower_gap );
-        if ( nusel.nshowers>0 ) hvariable_bad_v[kmaxshowergap]->Fill( nusel.max_shower_gap );
-        if ( nusel.nshowers>0 ) hvariable_bad_v[ksecondshowersize]->Fill( (float)nhits_second_shower );        
-        if ( nusel.ntracks>0 )  hvariable_bad_v[kmintrackgap]->Fill( nusel.min_track_gap );          
-        hvariable_bad_v[kmaxtracklen]->Fill( nusel.max_track_length );
-        hvariable_bad_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel );
-        hvariable_bad_v[klargestshowerll]->Fill( nusel.largest_shower_ll );
-        hvariable_bad_v[klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
-        hvariable_bad_v[kclosestshowerll]->Fill( nusel.closest_shower_ll );
-        hvariable_bad_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
-        hvariable_bad_v[knplanesconnected]->Fill( nusel.nplanes_connected );
-        hvariable_bad_v[kminconnectpass]->Fill( min_connected_pass );
-        hvariable_bad_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );
-        hvariable_bad_v[kbackwardmuonllr]->Fill( backwardmu_llr );
-	hvariable_bad_v[kleptoncosbeam]->Fill( lepton_cos_beam );
-	hvariable_bad_v[kprotoncosbeam]->Fill( track_cos_beam );
-	hvariable_bad_v[knusumke]->Fill( nu_sum_KE );			
+        hvariable_bad_v[kdwall]->Fill( vtx_dwall , event_weight );
+        hvariable_bad_v[kdist2true]->Fill( nusel.dist2truevtx , event_weight );
+        hvariable_bad_v[kmaxshowerhits]->Fill( nusel.max_shower_nhits , event_weight );
+        hvariable_bad_v[knshowerprongs]->Fill( nusel.nshowers , event_weight );
+        hvariable_bad_v[kntrackprongs]->Fill( nusel.ntracks , event_weight );
+        hvariable_bad_v[kllpid]->Fill( nusel.max_proton_pid , event_weight );
+        hvariable_bad_v[khipfraction]->Fill( nusel.vertex_hip_fraction , event_weight );
+        if ( nusel.nshowers>0 ) hvariable_bad_v[kminshowergap]->Fill( nusel.min_shower_gap , event_weight );
+        if ( nusel.nshowers>0 ) hvariable_bad_v[kmaxshowergap]->Fill( nusel.max_shower_gap , event_weight );
+        if ( nusel.nshowers>0 ) hvariable_bad_v[ksecondshowersize]->Fill( (float)nhits_second_shower , event_weight );        
+        if ( nusel.ntracks>0 )  hvariable_bad_v[kmintrackgap]->Fill( nusel.min_track_gap , event_weight );          
+        hvariable_bad_v[kmaxtracklen]->Fill( nusel.max_track_length , event_weight );
+        hvariable_bad_v[kvertexact]->Fill( nusel.vertex_charge_per_pixel , event_weight );
+        hvariable_bad_v[klargestshowerll]->Fill( nusel.largest_shower_ll , event_weight );
+        hvariable_bad_v[klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx , event_weight );
+        hvariable_bad_v[kclosestshowerll]->Fill( nusel.closest_shower_ll , event_weight );
+        hvariable_bad_v[kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx , event_weight );
+        hvariable_bad_v[knplanesconnected]->Fill( nusel.nplanes_connected , event_weight );
+        hvariable_bad_v[kminconnectpass]->Fill( min_connected_pass , event_weight );
+        hvariable_bad_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac , event_weight );
+        hvariable_bad_v[kbackwardmuonllr]->Fill( backwardmu_llr , event_weight );
+	hvariable_bad_v[kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
+	hvariable_bad_v[kprotoncosbeam]->Fill( track_cos_beam , event_weight );
+	hvariable_bad_v[knusumke]->Fill( nu_sum_KE , event_weight );			
       }
 
       // Cut variables: study correlation between reco state:
@@ -750,31 +815,31 @@ int main( int nargs, char** argv ) {
       }
 
       if ( vtx_pass[kAllCuts] ) {
-        hvar_onnu[vtx_reco_state][kdwall]->Fill( vtx_dwall );
+        hvar_onnu[vtx_reco_state][kdwall]->Fill( vtx_dwall , event_weight );
         if ( is_mc==1 )
-          hvar_onnu[vtx_reco_state][kdist2true]->Fill( nusel.dist2truevtx );
-        hvar_onnu[vtx_reco_state][kmaxshowerhits]->Fill( nusel.max_shower_nhits );
-        hvar_onnu[vtx_reco_state][knshowerprongs]->Fill( nusel.nshowers );
-        hvar_onnu[vtx_reco_state][kntrackprongs]->Fill( nusel.ntracks );
-        hvar_onnu[vtx_reco_state][kllpid]->Fill( nusel.max_proton_pid );
-        hvar_onnu[vtx_reco_state][khipfraction]->Fill( nusel.vertex_hip_fraction );
-        if ( nusel.nshowers>0 ) hvar_onnu[vtx_reco_state][kminshowergap]->Fill( nusel.min_shower_gap );
-        if ( nusel.nshowers>0 ) hvar_onnu[vtx_reco_state][kmaxshowergap]->Fill( nusel.max_shower_gap );
-        if ( nusel.nshowers>0 ) hvar_onnu[vtx_reco_state][ksecondshowersize]->Fill( (float)nhits_second_shower );
-        if ( nusel.ntracks>0 )  hvar_onnu[vtx_reco_state][kmintrackgap]->Fill( nusel.min_track_gap );
-        hvar_onnu[vtx_reco_state][kmaxtracklen]->Fill( nusel.max_track_length );
-        hvar_onnu[vtx_reco_state][kvertexact]->Fill( nusel.vertex_charge_per_pixel );
-        hvar_onnu[vtx_reco_state][klargestshowerll]->Fill( nusel.largest_shower_ll );
-        hvar_onnu[vtx_reco_state][klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx );
-        hvar_onnu[vtx_reco_state][kclosestshowerll]->Fill( nusel.closest_shower_ll );
-        hvar_onnu[vtx_reco_state][kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx );
-        hvar_onnu[vtx_reco_state][knplanesconnected]->Fill( nusel.nplanes_connected );
-        hvar_onnu[vtx_reco_state][kminconnectpass]->Fill( min_connected_pass );
-        hvar_onnu[vtx_reco_state][kunrecoqmedfrac]->Fill( unrecoq_medfrac );
-        hvar_onnu[vtx_reco_state][kbackwardmuonllr]->Fill( backwardmu_llr );
-	hvar_onnu[vtx_reco_state][kleptoncosbeam]->Fill( lepton_cos_beam );
-	hvar_onnu[vtx_reco_state][kprotoncosbeam]->Fill( track_cos_beam );
-	hvar_onnu[vtx_reco_state][knusumke]->Fill( nu_sum_KE );			
+          hvar_onnu[vtx_reco_state][kdist2true]->Fill( nusel.dist2truevtx , event_weight );
+        hvar_onnu[vtx_reco_state][kmaxshowerhits]->Fill( nusel.max_shower_nhits , event_weight );
+        hvar_onnu[vtx_reco_state][knshowerprongs]->Fill( nusel.nshowers , event_weight );
+        hvar_onnu[vtx_reco_state][kntrackprongs]->Fill( nusel.ntracks , event_weight );
+        hvar_onnu[vtx_reco_state][kllpid]->Fill( nusel.max_proton_pid , event_weight );
+        hvar_onnu[vtx_reco_state][khipfraction]->Fill( nusel.vertex_hip_fraction , event_weight );
+        if ( nusel.nshowers>0 ) hvar_onnu[vtx_reco_state][kminshowergap]->Fill( nusel.min_shower_gap , event_weight );
+        if ( nusel.nshowers>0 ) hvar_onnu[vtx_reco_state][kmaxshowergap]->Fill( nusel.max_shower_gap , event_weight );
+        if ( nusel.nshowers>0 ) hvar_onnu[vtx_reco_state][ksecondshowersize]->Fill( (float)nhits_second_shower , event_weight );
+        if ( nusel.ntracks>0 )  hvar_onnu[vtx_reco_state][kmintrackgap]->Fill( nusel.min_track_gap , event_weight );
+        hvar_onnu[vtx_reco_state][kmaxtracklen]->Fill( nusel.max_track_length , event_weight );
+        hvar_onnu[vtx_reco_state][kvertexact]->Fill( nusel.vertex_charge_per_pixel , event_weight );
+        hvar_onnu[vtx_reco_state][klargestshowerll]->Fill( nusel.largest_shower_ll , event_weight );
+        hvar_onnu[vtx_reco_state][klargestshoweravedqdx]->Fill( nusel.largest_shower_avedqdx , event_weight );
+        hvar_onnu[vtx_reco_state][kclosestshowerll]->Fill( nusel.closest_shower_ll , event_weight );
+        hvar_onnu[vtx_reco_state][kclosestshoweravedqdx]->Fill( nusel.closest_shower_avedqdx , event_weight );
+        hvar_onnu[vtx_reco_state][knplanesconnected]->Fill( nusel.nplanes_connected , event_weight );
+        hvar_onnu[vtx_reco_state][kminconnectpass]->Fill( min_connected_pass , event_weight );
+        hvar_onnu[vtx_reco_state][kunrecoqmedfrac]->Fill( unrecoq_medfrac , event_weight );
+        hvar_onnu[vtx_reco_state][kbackwardmuonllr]->Fill( backwardmu_llr , event_weight );
+	hvar_onnu[vtx_reco_state][kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
+	hvar_onnu[vtx_reco_state][kprotoncosbeam]->Fill( track_cos_beam , event_weight );
+	hvar_onnu[vtx_reco_state][knusumke]->Fill( nu_sum_KE , event_weight );			
       }
 
       // dQ/dx plots: need to save dqdx data, which didnt ..
@@ -826,25 +891,25 @@ int main( int nargs, char** argv ) {
         // 1eVA
         if ( is1l0p0pi==1 && evis_had>30.0 ) {
           //henu[k1eVA][icut][kAllModes]->Fill( Enu_true );
-          henu_eff[k1eVA][icut][kAllModes]->Fill( Enu_true );
-          //henu[k1eVA][icut][event_mode]->Fill( Enu_true );
-          henu_eff[k1eVA][icut][event_mode]->Fill( Enu_true );        
+          henu_eff[k1eVA][icut][kAllModes]->Fill( Enu_true , event_weight );
+          //henu[k1eVA][icut][event_mode]->Fill( Enu_true , event_weight );
+          henu_eff[k1eVA][icut][event_mode]->Fill( Enu_true , event_weight );        
         }
         
         // 1e1p
         if ( is1l1p0pi==1 ) {
-          //henu[k1e1p][icut][kAllModes]->Fill( Enu_true );
-          henu_eff[k1e1p][icut][kAllModes]->Fill( Enu_true );
-          //henu[k1e1p][icut][event_mode]->Fill( Enu_true );
-          henu_eff[k1e1p][icut][event_mode]->Fill( Enu_true );                
+          //henu[k1e1p][icut][kAllModes]->Fill( Enu_true , event_weight );
+          henu_eff[k1e1p][icut][kAllModes]->Fill( Enu_true , event_weight );
+          //henu[k1e1p][icut][event_mode]->Fill( Enu_true , event_weight );
+          henu_eff[k1e1p][icut][event_mode]->Fill( Enu_true , event_weight );                
         }
       }
 
       // All
-      //henu[kAll][icut][kAllModes]->Fill( Enu_true );
-      henu_eff[kAll][icut][kAllModes]->Fill( Enu_true );
-      //henu[kAll][icut][event_mode]->Fill( Enu_true );
-      henu_eff[kAll][icut][event_mode]->Fill( Enu_true );                      
+      //henu[kAll][icut][kAllModes]->Fill( Enu_true , event_weight );
+      henu_eff[kAll][icut][kAllModes]->Fill( Enu_true , event_weight );
+      //henu[kAll][icut][event_mode]->Fill( Enu_true , event_weight );
+      henu_eff[kAll][icut][event_mode]->Fill( Enu_true , event_weight );                      
     }//end of loop over cut sequence
 
     // nshowerhits: temporary proxy for neutrino energy
@@ -854,28 +919,28 @@ int main( int nargs, char** argv ) {
       int best_passing_vtx_index = index_by_dist_v.front().index;
       //float num_shr_hits = (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits;
       float num_shr_hits = index_by_dist_v.front().nusumKE;
-      hnshower[kAll]->Fill( num_shr_hits );
-      hshower_vs_enu[kAll]->Fill( Enu_true, num_shr_hits );
-      hshower_vs_evislep[kAll]->Fill( evis_lep, num_shr_hits );
-      henu[kAll][kAllCuts][kAllModes]->Fill( Enu_true );
-      henu[kAll][kAllCuts][event_mode]->Fill( Enu_true );      
+      hnshower[kAll]->Fill( num_shr_hits , event_weight );
+      hshower_vs_enu[kAll]->Fill( Enu_true, num_shr_hits , event_weight );
+      hshower_vs_evislep[kAll]->Fill( evis_lep, num_shr_hits , event_weight );
+      henu[kAll][kAllCuts][kAllModes]->Fill( Enu_true , event_weight );
+      henu[kAll][kAllCuts][event_mode]->Fill( Enu_true , event_weight );      
 
       if ( is_mc==1 ) {
 
         if ( is1l0p0pi==1 && evis_had>30.0 ) {
-          hnshower[k1eVA]->Fill( num_shr_hits );
-          hshower_vs_enu[k1eVA]->Fill( Enu_true, num_shr_hits );
-          hshower_vs_evislep[k1eVA]->Fill( evis_lep, num_shr_hits );
-          henu[k1eVA][kAllCuts][kAllModes]->Fill( Enu_true );        
-          henu[k1eVA][kAllCuts][event_mode]->Fill( Enu_true );
+          hnshower[k1eVA]->Fill( num_shr_hits , event_weight );
+          hshower_vs_enu[k1eVA]->Fill( Enu_true, num_shr_hits , event_weight );
+          hshower_vs_evislep[k1eVA]->Fill( evis_lep, num_shr_hits , event_weight );
+          henu[k1eVA][kAllCuts][kAllModes]->Fill( Enu_true , event_weight );        
+          henu[k1eVA][kAllCuts][event_mode]->Fill( Enu_true , event_weight );
         }
       
         if ( is1l1p0pi==1 ) {
-	  hnshower[k1e1p]->Fill( num_shr_hits );	  
-          hshower_vs_enu[k1e1p]->Fill( Enu_true, num_shr_hits );
-          hshower_vs_evislep[k1e1p]->Fill( evis_lep, num_shr_hits );
-          henu[k1e1p][kAllCuts][kAllModes]->Fill( Enu_true );        
-          henu[k1e1p][kAllCuts][event_mode]->Fill( Enu_true );        
+	  hnshower[k1e1p]->Fill( num_shr_hits , event_weight );	  
+          hshower_vs_enu[k1e1p]->Fill( Enu_true, num_shr_hits , event_weight );
+          hshower_vs_evislep[k1e1p]->Fill( evis_lep, num_shr_hits , event_weight );
+          henu[k1e1p][kAllCuts][kAllModes]->Fill( Enu_true , event_weight );        
+          henu[k1e1p][kAllCuts][event_mode]->Fill( Enu_true , event_weight );        
         }
         
       }
