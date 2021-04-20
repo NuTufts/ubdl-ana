@@ -7,10 +7,14 @@
 #include "TH1D.h"
 #include "TH2D.h"
 
+#include "larcv/core/DataFormat/IOManager.h"
+#include "larcv/core/DataFormat/EventImage2D.h"
 #include "larflow/Reco/NuSelectionVariables.h"
 #include "larflow/Reco/NuVertexCandidate.h"
 #include "larflow/Reco/NuSelCosmicTagger.h"
 #include "larflow/Reco/TrackForwardBackwardLL.h"
+#include "larflow/Reco/NuTrackKinematics.h"
+#include "larflow/Reco/NuShowerKinematics.h"
 #include "ublarcvapp/ubdllee/dwall.h"
 
 int main( int nargs, char** argv ) {
@@ -21,10 +25,14 @@ int main( int nargs, char** argv ) {
   char zinput[1028];  
   input_list >> zinput;
 
-  int is_bnbnu = std::atoi(argv[2]);
+  std::ifstream dlmerged_list(argv[2]);
+  char zdlmerged[1028];
+  dlmerged_list >> zdlmerged;
+  
+  int is_bnbnu = std::atoi(argv[3]);
   int is_mc = 0;
-  if ( nargs>=4 )
-    is_mc = std::atoi(argv[3]);
+  if ( nargs>=5 )
+    is_mc = std::atoi(argv[4]);
 
   bool DEBUG = false;
   
@@ -33,6 +41,17 @@ int main( int nargs, char** argv ) {
     input_v.push_back( std::string(zinput) );
     input_list >> zinput;
   } while ( input_list.good() && !input_list.eof() );
+
+  std::vector<std::string> dlmerged_v;
+  do {
+    dlmerged_v.push_back( std::string(zdlmerged) );
+    dlmerged_list >> zdlmerged;
+  } while ( dlmerged_list.good() && !dlmerged_list.eof() );
+
+  if ( dlmerged_v.size()!=input_v.size() ) {
+    std::cout << "number of dlmerged files (" << dlmerged_v.size() << ") does not equal num of ana files (" << input_v.size() << ")" << std::endl;
+    return -1;
+  }
   
   TChain* in = new TChain("KPSRecoManagerTree");
   int ninputs = 0;
@@ -41,7 +60,17 @@ int main( int nargs, char** argv ) {
     std::cout << finput << std::endl;
     ninputs++;
   }
-  std::cout << "number of files loaded: " << ninputs << std::endl;
+
+  larcv::IOManager iolcv( larcv::IOManager::kREAD, "larcv", larcv::IOManager::kTickBackward );
+  for (auto& fdlmerged : dlmerged_v ) {
+    iolcv.add_in_file( fdlmerged );
+  }
+  iolcv.specify_data_read( larcv::kProductImage2D, "wire" );
+  iolcv.reverse_all_products();
+  iolcv.initialize();
+  
+  std::cout << "number of files loaded: ana=" << ninputs << " dlmerged=" << dlmerged_v.size() << std::endl;
+  
 
   const float vtx_cutoff  = 5.0;
   const float vtx_cutoff2 = 20.0;
@@ -59,16 +88,18 @@ int main( int nargs, char** argv ) {
   int interactionType;
   int ccnc;
   int nu_pdg;
-  in->SetBranchAddress( "Enu_true",  &Enu_true );
-  in->SetBranchAddress( "evis_lep",  &evis_lep );  
-  in->SetBranchAddress( "evis_had",  &evis_had );
-  in->SetBranchAddress( "is1l1p0pi", &is1l1p0pi );
-  in->SetBranchAddress( "is1l0p0pi", &is1l0p0pi );
-  in->SetBranchAddress( "vtx_dwall", &vtx_dwall );
-  in->SetBranchAddress( "currentType", &ccnc );
-  in->SetBranchAddress( "genieMode", &genie_mode );
-  in->SetBranchAddress( "interactionType", &interactionType );
-  in->SetBranchAddress( "nu_pdg", &nu_pdg );
+  if ( is_mc ) {
+    in->SetBranchAddress( "Enu_true",  &Enu_true );
+    in->SetBranchAddress( "evis_lep",  &evis_lep );  
+    in->SetBranchAddress( "evis_had",  &evis_had );
+    in->SetBranchAddress( "is1l1p0pi", &is1l1p0pi );
+    in->SetBranchAddress( "is1l0p0pi", &is1l0p0pi );
+    in->SetBranchAddress( "vtx_dwall", &vtx_dwall );
+    in->SetBranchAddress( "currentType", &ccnc );
+    in->SetBranchAddress( "genieMode", &genie_mode );
+    in->SetBranchAddress( "interactionType", &interactionType );
+    in->SetBranchAddress( "nu_pdg", &nu_pdg );
+  }
   
   // Selection variables
   /**
@@ -104,6 +135,10 @@ int main( int nargs, char** argv ) {
   in->SetBranchAddress( "nu_sel_v",   &pnu_sel_v );    ///< selection variables per vertex
   in->SetBranchAddress( "nufitted_v", &pnu_fitted_v ); ///< reconstruction objects per vertex
 
+
+  larflow::reco::NuTrackKinematics nu_track_kin;
+  larflow::reco::NuShowerKinematics nu_shower_kin;
+  nu_shower_kin.set_verbosity( larcv::msg::kDEBUG );
   
   int nentries = in->GetEntries();
   
@@ -193,17 +228,20 @@ int main( int nargs, char** argv ) {
          kmaxshowergap,   // [8]
          kmintrackgap,    // [9]         
          kmaxtracklen,    // [10]         
-         kvertexact,      // [12]
-         klargestshowerll, // [13]
-         kclosestshowerll, // [14]
-         klargestshoweravedqdx, // [15]
-         kclosestshoweravedqdx, // [16]
-         knplanesconnected,     // [17]
-         kminconnectpass,       // [18]
-         ksecondshowersize,     // [19]
-         kunrecoqmedfrac,       // [20]
-         kbackwardmuonllr,      // [21]
-         kNumCutVariables };    // [22]         
+         kvertexact,      // [11]
+         klargestshowerll, // [12]
+         kclosestshowerll, // [13]
+         klargestshoweravedqdx, // [14]
+         kclosestshoweravedqdx, // [15]
+         knplanesconnected,     // [16]
+         kminconnectpass,       // [17]
+         ksecondshowersize,     // [18]
+         kunrecoqmedfrac,       // [19]
+         kbackwardmuonllr,      // [20]
+	 kleptoncosbeam,        // [21]
+	 kprotoncosbeam,        // [22]
+	 knusumke,              // [23]
+         kNumCutVariables };    // [24]         
          
   std::vector<std::string> cutvar_names
     = { "dwall",                // [0]
@@ -226,9 +264,12 @@ int main( int nargs, char** argv ) {
         "minconnectpass",       // [17]
         "secondshowersize",     // [18]
         "unrecoqmedfrac",       // [19]
-        "backwardmuonllr"       // [20]
+        "backwardmuonllr",      // [20]
+	"leptoncosbeam",        // [21]
+	"protoncosbeam",        // [22]
+	"nusumke"               // [23]
   };
-  float cutvar_range[21][2] = { {-10,200},  // [0] dwall
+  float cutvar_range[24][2] = { {-10,200},  // [0] dwall
                                 {0, 50 },   // [1] distance to true vertex
                                 {0, 10000}, // [2] hits in largest shower
                                 {0, 10},    // [3] num shower prongs
@@ -248,9 +289,12 @@ int main( int nargs, char** argv ) {
                                 {0,4},      // [17] num connected planes
                                 {0,10000},  // [18] second shower size
                                 {0,1.0},    // [19] unreco charge, median fraction
-                                {-100,100}  // [20] backward muon LLR
+                                {-100,100}, // [20] backward muon LLR
+				{-1., 1.},  // [21] shower cos-beam
+				{-1., 1.},  // [22] track cos-beam
+				{0,3000}    // [23] neutrino sum kinetic energy
   };
-  int cutvar_nbins[21] = { 210, // [0] dwall
+  int cutvar_nbins[24] = { 210, // [0] dwall
                            150, // [1] dist 2 true
                            100, // [2] hits in largest shower
                            10,  // [3] num shower prongs
@@ -270,7 +314,10 @@ int main( int nargs, char** argv ) {
                            4,   // [17] min connected pass among planes
                            100, // [18] second shower size
                            20,  // [19] unreco charge, median fraction
-                           51   // [20] backward muon LLR
+                           51,  // [20] backward muon LLR
+			   21,  // [21] lepton/shower cos-beam
+			   21,  // [22] proton/track cos-beam
+			   30   // [23] neutrino sum kinetic energy
   };
 
 
@@ -278,9 +325,10 @@ int main( int nargs, char** argv ) {
   // Algorithms
   // -----------
   larflow::reco::NuSelCosmicTagger cosmictagger;
-  cosmictagger.set_verbosity(larcv::msg::kDEBUG);
+  //cosmictagger.set_verbosity(larcv::msg::kDEBUG);
 
   larflow::reco::TrackForwardBackwardLL muvsproton;
+  //muvsproton.set_verbosity(larcv::msg::kDEBUG);
   muvsproton.set_verbosity(larcv::msg::kINFO);
   
   // dq/dx plots: we will fill for vtx that passes vertex activity cuts
@@ -306,13 +354,16 @@ int main( int nargs, char** argv ) {
   struct EventDist2True_t {
     int index;
     float dist;
+    float nusumKE;
     EventDist2True_t()
       : index(-1),
-        dist(1000.0)
+        dist(1000.0),
+	nusumKE(0)
     {};
-    EventDist2True_t( float d, int idx )
+    EventDist2True_t( float d, int idx, float nuke )
       : index(idx),
-        dist(d)
+        dist(d),
+	nusumKE(nuke)
     {};    
     bool operator<( EventDist2True_t& rhs ) {
       if ( dist<rhs.dist )
@@ -320,6 +371,8 @@ int main( int nargs, char** argv ) {
       return false;
     };
   };
+
+  out->cd();
   
   // Efficiency versus Enu
   TH1D* henu[nsamples][kNumCuts][kNumModes]      = {0}; // for plotting Enu
@@ -376,6 +429,7 @@ int main( int nargs, char** argv ) {
                                       cutvar_nbins[icut], cutvar_range[icut][0], cutvar_range[icut][1] );
     hvariable_good_v[icut] = new TH1D(ss_good.str().c_str(),";",
                                       cutvar_nbins[icut], cutvar_range[icut][0], cutvar_range[icut][1] );
+    std::cout << "defined: " << ss_good.str() << std::endl;    
 
   }
   
@@ -399,6 +453,11 @@ int main( int nargs, char** argv ) {
       std::cout << "[ ENTRY " << ientry << "]" << std::endl;
     
     in->GetEntry(ientry);
+    iolcv.read_entry(ientry);
+
+    larcv::EventImage2D* ev_img
+      = (larcv::EventImage2D*)iolcv.get_data(larcv::kProductImage2D,"wire");
+    auto const& adc_v =  ev_img->as_vector();
 
     // truth cuts
     bool cut_fv = true;
@@ -444,8 +503,55 @@ int main( int nargs, char** argv ) {
       auto & nusel = (*pnu_sel_v)[ivtx];
       auto & nuvtx = (*pnu_fitted_v)[ivtx];
 
-      EventDist2True_t idx( nusel.dist2truevtx, ivtx );
+      std::cout << "VTX[" << ivtx << "] nshowers=" << nuvtx.shower_v.size() << " ntracks=" << nuvtx.track_v.size() << std::endl;
 
+      // calculate track/shower kinematics
+      nu_track_kin.analyze(nuvtx, nusel);
+      nu_shower_kin.analyze(nuvtx, nusel, iolcv );
+
+      // neutrino sum KE
+      float nu_sum_KE = 0.;
+      
+      // track kinematics
+      float track_cos_beam = -2.0;
+      float max_ke_mev = 0.;
+      if ( nu_track_kin._track_p_mom_v.size()>0 )  {
+	for  ( auto& vtrack : nu_track_kin._track_p_mom_v ) {
+	  float proton_ke = vtrack.E()-940.1;
+	  if ( proton_ke>max_ke_mev ) {
+	    max_ke_mev = proton_ke;
+	    track_cos_beam = vtrack.Vect().Z()/vtrack.Vect().Mag();
+	  }
+	  nu_sum_KE += proton_ke;
+	}
+      }
+      if ( track_cos_beam==1.0 )
+	track_cos_beam = 0.999;
+      if ( track_cos_beam==-1.0 )
+	track_cos_beam = -0.999;
+
+      // shower kinematics (using plane 2 right now)
+      float lepton_cos_beam = -2.0;
+      float max_shower_mev = 0.;
+      if ( nu_shower_kin._shower_mom_v.size()>0 && nu_shower_kin._shower_mom_v[2].size()>0 ) {
+	for ( auto& vshower : nu_shower_kin._shower_mom_v[2] ) {
+	  float shower_mev = vshower.E();
+	  if ( shower_mev>max_shower_mev ) {
+	    max_shower_mev = shower_mev;
+	    lepton_cos_beam = vshower.Vect().Z()/vshower.Vect().Mag();
+	  }
+	  nu_sum_KE += shower_mev;
+	}
+      }
+      if (lepton_cos_beam==1.0)
+	lepton_cos_beam = 0.999;
+      if ( lepton_cos_beam==-1.0)
+	lepton_cos_beam = -0.999;
+      std::cout << " vtx[" << ivtx << "] lepton_cos_beam=" << lepton_cos_beam << std::endl;
+
+      std::cout << " vtx[" << ivtx << "] Nu Sum KE=" << nu_sum_KE << std::endl;      
+      EventDist2True_t idx( nusel.dist2truevtx, ivtx, nu_sum_KE );      
+      
       // dwall-reco
       int reco_boundary = 0;
       float reco_dwall = ublarcvapp::dwall( nuvtx.pos, reco_boundary );
@@ -525,13 +631,13 @@ int main( int nargs, char** argv ) {
       }
 
       // [16] backward muon
-      vtx_pass[kBackMuon] = true;
-      float min_backwardmu_llr = 1000;
+      vtx_pass[kBackMuon] = false;
+      float backwardmu_llr = -99;
       for ( auto const& llr : muvsproton.best_llr_v ) {
-        if ( llr<0 ) 
-          vtx_pass[kBackMuon] = false;
-        if ( llr < min_backwardmu_llr )
-          min_backwardmu_llr = llr;
+        if ( llr>=0 ) 
+          vtx_pass[kBackMuon] = true;
+        if ( llr > backwardmu_llr )
+          backwardmu_llr = llr;
       }
 
       // set the all cuts flag
@@ -594,7 +700,10 @@ int main( int nargs, char** argv ) {
         hvariable_good_v[knplanesconnected]->Fill( nusel.nplanes_connected );
         hvariable_good_v[kminconnectpass]->Fill( min_connected_pass );
         hvariable_good_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );
-        hvariable_good_v[kbackwardmuonllr]->Fill( min_backwardmu_llr );
+        hvariable_good_v[kbackwardmuonllr]->Fill( backwardmu_llr );
+	hvariable_good_v[kleptoncosbeam]->Fill( lepton_cos_beam );
+	hvariable_good_v[kprotoncosbeam]->Fill( track_cos_beam );
+	hvariable_good_v[knusumke]->Fill( nu_sum_KE );		
       }
       else {
         
@@ -618,7 +727,10 @@ int main( int nargs, char** argv ) {
         hvariable_bad_v[knplanesconnected]->Fill( nusel.nplanes_connected );
         hvariable_bad_v[kminconnectpass]->Fill( min_connected_pass );
         hvariable_bad_v[kunrecoqmedfrac]->Fill( unrecoq_medfrac );
-        hvariable_bad_v[kbackwardmuonllr]->Fill( min_backwardmu_llr );        
+        hvariable_bad_v[kbackwardmuonllr]->Fill( backwardmu_llr );
+	hvariable_bad_v[kleptoncosbeam]->Fill( lepton_cos_beam );
+	hvariable_bad_v[kprotoncosbeam]->Fill( track_cos_beam );
+	hvariable_bad_v[knusumke]->Fill( nu_sum_KE );			
       }
 
       // Cut variables: study correlation between reco state:
@@ -659,7 +771,10 @@ int main( int nargs, char** argv ) {
         hvar_onnu[vtx_reco_state][knplanesconnected]->Fill( nusel.nplanes_connected );
         hvar_onnu[vtx_reco_state][kminconnectpass]->Fill( min_connected_pass );
         hvar_onnu[vtx_reco_state][kunrecoqmedfrac]->Fill( unrecoq_medfrac );
-        hvar_onnu[vtx_reco_state][kbackwardmuonllr]->Fill( min_backwardmu_llr );        
+        hvar_onnu[vtx_reco_state][kbackwardmuonllr]->Fill( backwardmu_llr );
+	hvar_onnu[vtx_reco_state][kleptoncosbeam]->Fill( lepton_cos_beam );
+	hvar_onnu[vtx_reco_state][kprotoncosbeam]->Fill( track_cos_beam );
+	hvar_onnu[vtx_reco_state][knusumke]->Fill( nu_sum_KE );			
       }
 
       // dQ/dx plots: need to save dqdx data, which didnt ..
@@ -737,7 +852,8 @@ int main( int nargs, char** argv ) {
       // this means event had passing vertex
       
       int best_passing_vtx_index = index_by_dist_v.front().index;
-      float num_shr_hits = (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits;
+      //float num_shr_hits = (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits;
+      float num_shr_hits = index_by_dist_v.front().nusumKE;
       hnshower[kAll]->Fill( num_shr_hits );
       hshower_vs_enu[kAll]->Fill( Enu_true, num_shr_hits );
       hshower_vs_evislep[kAll]->Fill( evis_lep, num_shr_hits );
@@ -778,7 +894,7 @@ int main( int nargs, char** argv ) {
   //     henu_eff[i][j][kAllModes]->Divide( henu[i][kFV][kAllModes] );
   //   }
   // }
-  
+  std::cout << "[WRITE OUTPUT FILE]" << std::endl; 
   out->Write();
   delete in;
   
