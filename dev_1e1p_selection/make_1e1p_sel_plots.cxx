@@ -871,7 +871,7 @@ int main( int nargs, char** argv ) {
         }
       
         if ( is1l1p0pi==1 ) {
-          hnshower[k1e1p]->Fill( (*pnu_sel_v)[best_passing_vtx_index].max_shower_nhits );
+	  hnshower[k1e1p]->Fill( num_shr_hits );	  
           hshower_vs_enu[k1e1p]->Fill( Enu_true, num_shr_hits );
           hshower_vs_evislep[k1e1p]->Fill( evis_lep, num_shr_hits );
           henu[k1e1p][kAllCuts][kAllModes]->Fill( Enu_true );        
