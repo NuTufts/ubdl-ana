@@ -41,7 +41,7 @@ int main( int nargs, char** argv ) {
   if (is_mc==1 && nargs>=7)  {
     mcweight_list = new std::ifstream( argv[5] );
     (*mcweight_list) >> zmcweight;
-    LEE_MODE = argv[6];
+    LEE_MODE = std::atoi(argv[6]);
     if ( LEE_MODE==1 ) {
       std::cout << "RUNNING IN LEE WEIGHT MODE" << std::endl;
     }
@@ -62,10 +62,12 @@ int main( int nargs, char** argv ) {
   } while ( dlmerged_list.good() && !dlmerged_list.eof() );
 
   std::vector<std::string> mcweight_v;
-  do {
-    mcweight_v.push_back( std::string(zmcweight) );
-    (*mcweight_list) >> zmcweight;
-  } while ( mcweight_list->good() && !mcweight_list->eof() );
+  if ( is_mc==1 && mcweight_list ) {
+    do {
+      mcweight_v.push_back( std::string(zmcweight) );
+      (*mcweight_list) >> zmcweight;
+    } while ( mcweight_list->good() && !mcweight_list->eof() );
+  }
   
   if ( dlmerged_v.size()!=input_v.size() ) {
     std::cout << "number of dlmerged files (" << dlmerged_v.size() << ") does not equal num of ana files (" << input_v.size() << ")" << std::endl;
@@ -890,7 +892,7 @@ int main( int nargs, char** argv ) {
       if ( is_mc==1 ) {
         // 1eVA
         if ( is1l0p0pi==1 && evis_had>30.0 ) {
-          //henu[k1eVA][icut][kAllModes]->Fill( Enu_true );
+          //henu[k1eVA][icut][kAllModes]->Fill( Enu_true , event_weight );
           henu_eff[k1eVA][icut][kAllModes]->Fill( Enu_true , event_weight );
           //henu[k1eVA][icut][event_mode]->Fill( Enu_true , event_weight );
           henu_eff[k1eVA][icut][event_mode]->Fill( Enu_true , event_weight );        
