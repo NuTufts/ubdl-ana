@@ -19,12 +19,12 @@
 container=/cluster/tufts/wongjiradlab/larbys/larbys-containers/ubdl_depsonly_py3.6.11_u16.04_cu11_pytorch1.7.1.simg
 RUN_DLANA_DIR=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/dev_1e1p_selection/
 OFFSET=0
-STRIDE=14
+STRIDE=80
 
 SAMPLE_NAME=mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge
-INPUTFILE=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/dev_1e1p_selection/bnb_nu_overlay.txt
+INPUTFILE=/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/dev_1e1p_selection/bnb_nu_overlay_v1.txt
 module load singularity
 
 # CPU MODE
-srun singularity exec ${container} bash -c "cd ${RUN_DLANA_DIR} && source run_batch_1e1p_plots.sh $OFFSET $STRIDE $SAMPLE_NAME ${INPUTFILE} 1"
+srun singularity exec ${container} bash -c "cd ${RUN_DLANA_DIR} && source run_batch_1e1p_plots.sh $OFFSET $STRIDE $SAMPLE_NAME ${INPUTFILE} 1 1"
 

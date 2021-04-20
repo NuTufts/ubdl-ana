@@ -406,15 +406,15 @@ int main( int nargs, char** argv ) {
   for (int isample=0; isample<nsamples; isample++) {
     std::stringstream ss;
     ss << "hnshower_" << sample_names[isample];
-    hnshower[isample] = new TH1D(ss.str().c_str(),";num shower hits;",100,0,10000);
+    hnshower[isample] = new TH1D(ss.str().c_str(),";num shower hits;",50,0,5000);
 
     std::stringstream ss2d;
     ss2d << "hnshower_vs_enu_" << sample_names[isample];
-    hshower_vs_enu[isample] = new TH2D(ss2d.str().c_str(), "",30,0,3000,100,0,20000);
+    hshower_vs_enu[isample] = new TH2D(ss2d.str().c_str(), "",150,0,3000,100,0,5000);
 
     std::stringstream ss_vs_elep;
     ss_vs_elep << "hnshower_vs_evislep_" << sample_names[isample];
-    hshower_vs_evislep[isample] = new TH2D(ss_vs_elep.str().c_str(), "",150,0,3000,200,0,10000);
+    hshower_vs_evislep[isample] = new TH2D(ss_vs_elep.str().c_str(), "",150,0,3000,100,0,5000);
   }
                                      
   // cut variables, with truth tag. for study selection power.

@@ -6,7 +6,7 @@
 #SBATCH --output=plot_LEE_dev_sub0.txt
 #SBATCH --mem-per-cpu=2000
 #SBATCH --time=1:00:00
-#SBATCH --array=0-99
+#SBATCH --array=99
 #SBATCH --cpus-per-task=1
 ##SBATCH --partition=batch
 #SBATCH --partition=preempt

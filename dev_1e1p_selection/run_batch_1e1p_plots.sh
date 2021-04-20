@@ -67,15 +67,18 @@ for ((i=0;i<${STRIDE};i++)); do
     baseinput=$(basename $inputfile )
     echo "inputfile path: $inputfile" >> ${local_logfile}
     echo "baseinput: $baseinput" >> ${local_logfile}
-    let fileid=`echo $baseinput | sed 's|_|\ |g' | sed 's|-|\ |g' | sed 's|fileid|\ |g' | awk '{ print $2 }' | sed -r 's/0+([0-9]+)/\1/g'`
-    let lineno_dlmerged=${fileid}+1
-    dlmerged=`sed -n ${lineno_dlmerged}p ${DLMERGED_LIST}`
-    echo "dlmerged: $dlmerged" >> ${local_logfile}
+    if [ -n "$baseinput" ]; then
+	let fileid=`echo $baseinput | sed 's|_|\ |g' | sed 's|-|\ |g' | sed 's|fileid|\ |g' | awk '{ print $2 }' | sed -r 's/0+([0-9]+)/\1/g'`
+	let lineno_dlmerged=${fileid}+1
+	dlmerged=`sed -n ${lineno_dlmerged}p ${DLMERGED_LIST}`
+	echo "dlmerged: $dlmerged" >> ${local_logfile}
     
-    echo "JOBID ${jobid} running FILEID ${fileid} with file: ${baseinput}"
-    echo $inputfile >> input.list
-    echo $dlmerged >> dlmerged.list
-
+	echo "JOBID ${jobid} running FILEID ${fileid} with file: ${baseinput}"
+	echo $inputfile >> input.list
+	echo $dlmerged >> dlmerged.list
+    else
+	echo "fileid empty"
+    fi
 done
 
 #gdb -ex=r -ex=bt -ex=quit --args make_1e1p_sel_plots input.list $ISBNBNU $ISMC
