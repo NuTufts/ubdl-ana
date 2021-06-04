@@ -15,24 +15,22 @@ inputlist="/cluster/tufts/wongjiradlab/nutufts/dlgen2prod/run3inputlists/mcc9_v2
 stem="merged_dlreco"
 
 #samplename = "mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge"
-#inputlist="../maskrcnn_input_filelists/mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge_MRCNN_INPUTS_LIST.txt"
+#inputlist="/cluster/tufts/wongjiradlab/nutufts/dlgen2prod/maskrcnn_input_filelists/mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge_MRCNN_INPUTS_LIST.txt"
 #stem="merged_dlreco"
 
 #samplename = "mcc9jan_run1_bnb5e19"
 #inputlist="../run1inputlists/mcc9_v28_wctagger_bnb5e19_filelist.txt"
 #stem="merged_dlreco"
 
-outfolder="/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/shower_e_vs_gamma/output/%s/perfectreco/"%(samplename)
+outfolder="/cluster/tufts/wongjiradlab/twongj01/ubdl-ana/shower_e_vs_gamma/output/%s/showerdqdx/"%(samplename)
 larmatch_outfolder="/cluster/tufts/wongjiradlab/nutufts/data/v0/%s/larmatch/"%(samplename)
+kpsana_outfolder="/cluster/tufts/wongjiradlab/nutufts/data/v1/%s/larflowreco/ana/"%(samplename)
 
-# get list of finished reco files
-cmd = "find %s -name larflowreco_*.root -size +1k | sort" % (outfolder)
-print(cmd)
+# get list of showerdqdx files (the ones we are trying to make here)
+cmd = "find %s -name showerdqdx_*.root -size +1k | sort" % (outfolder)
 plist = os.popen(cmd)
 flist = plist.readlines()
-
-finished = []
-
+finished_showerdqdx = []
 for f in flist:
     f = f.strip()
     #print(f)
@@ -45,24 +43,50 @@ for f in flist:
     except:        
         print("error parsing file: ",f," :: ",x)
         sys.exit(-1)
-    finished.append(jobid)
+    finished_showerdqdx.append(jobid)
     #print(jobid," ",base)    
 
-finished.sort()
-print("Number of finished files: ",len(finished))
+finished_showerdqdx.sort()
+print("Number of finished SHOWERDQDX files: ",len(finished_showerdqdx))
 #input()
+
+
+# get list of finished larflow reco files
+cmd = "find %s -name larflowreco_*.root -size +1k | sort" % (kpsana_outfolder)
+print(cmd)
+plist = os.popen(cmd)
+flist = plist.readlines()
+finished_kpsreco = []
+kpsreco_dict = {}
+for f in flist:
+    f = f.strip()
+    #print(f)
+    base = os.path.basename(f)
+    #print(base.split("fileid")[-1])
+    x = re.split("[_-]+",base.split("fileid")[-1])
+    #print(x)
+    try:
+        jobid = int(x[0])        
+    except:        
+        print("error parsing file: ",f," :: ",x)
+        sys.exit(-1)
+    finished_kpsreco.append(jobid)
+    kpsreco_dict[jobid] = f
+    #print(jobid," ",base)    
+finished_kpsreco.sort()
+print("Number of finished LARFLOW KPSRECO files: ",len(finished_kpsreco))
+input()
 
 # need list of larmatch files
 cmd = "find %s -name larmatch_kps*larlite.root -size +100k | sort"%(larmatch_outfolder)
 print(cmd)
 plist = os.popen(cmd)
 flist = plist.readlines()
-lm_finished = {}
+lm_finished = {} # holds hash to filename
 for f in flist:
     f = f.strip()
-    print(f)
-    f1 = f.replace("_larlite.root","")
-
+    #print(f)
+    f1 = f.replace("_larlite.root","")    
     if samplename in ["mcc9_v29e_dl_run3b_bnb_nu_overlay_nocrtremerge",
                       "mcc9_v29e_dl_run3_G1_extbnb_dlana",
                       "mcc9_v29e_dl_run3b_bnb_intrinsic_nue_overlay_nocrtremerge",
@@ -71,21 +95,21 @@ for f in flist:
     elif samplename in ["mcc9_v29e_dl_run3b_intrinsic_nue_LowE"]:
         h = f.split("larmatch_kps_")[-1].split("-jobid")[0]
     else:
-        raise ValueError("sample, %s, not setup for parsing larmatch files"%(samplename))
-        
-    print(h,": ",os.path.basename(f))
-    lm_finished[h] = f
+        raise ValueError("sample, %s, not setup for parsing larmatch files"%(samplename))    
+    #print(h,": ",os.path.basename(f))
+    lm_finished[h] = f    
+print("larmatch files with hashes: ",len(lm_finished))
+input("[ENTER] to continue")
+             
 
-print("larmatch files finished: ",len(lm_finished))
-#input()
-
+# get list of dlmerged input files
 pnjobs = os.popen("cat %s | wc -l"%(inputlist))
 njobs = int(pnjobs.readlines()[0])
 
 print("Number of files in input list: ",njobs)
 missing = []
 for i in range(njobs):
-    if i not in finished:
+    if i not in finished_showerdqdx:
         missing.append(i)
 missing.sort()        
 print("Number of missing files: ",len(missing))
@@ -103,11 +127,12 @@ for n,fileid in enumerate(missing):
     #base = os.path.basename( dlmerged ).split(
     #h = re.split("[_-]+",base.split("fileid")[-1])    
     #print(h)
-    if h in lm_finished:
+    if h in lm_finished and fileid in kpsreco_dict:
         lmfile = lm_finished[h]
-        print("%d %s %s"%(fileid,dlmerged,lmfile),file=fout)
+        kpsreco = kpsreco_dict[fileid]        
+        print("%d %s %s"%(fileid,dlmerged,kpsreco),file=fout)
     else:
-        print("No larmatch file with hash %s"%(h))
+        print("No LARMATCH file with hash %s"%(h))
 fout.close()
 
 
