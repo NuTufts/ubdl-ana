@@ -15,6 +15,7 @@
 #include "larflow/Reco/TrackForwardBackwardLL.h"
 #include "larflow/Reco/NuTrackKinematics.h"
 #include "larflow/Reco/NuShowerKinematics.h"
+#include "larflow/Reco/ShowerdQdx.h"
 #include "ublarcvapp/ubdllee/dwall.h"
 
 int main( int nargs, char** argv ) {
@@ -295,7 +296,8 @@ int main( int nargs, char** argv ) {
 	 kleptoncosbeam,        // [21]
 	 kprotoncosbeam,        // [22]
 	 knusumke,              // [23]
-         kNumCutVariables };    // [24]         
+         kelectrondqdx,         // [24]
+         kNumCutVariables };    // [25]         
          
   std::vector<std::string> cutvar_names
     = { "dwall",                // [0]
@@ -321,9 +323,10 @@ int main( int nargs, char** argv ) {
         "backwardmuonllr",      // [20]
 	"leptoncosbeam",        // [21]
 	"protoncosbeam",        // [22]
-	"nusumke"               // [23]
+	"nusumke",              // [23]
+        "electrondqdx"          // [24]
   };
-  float cutvar_range[24][2] = { {-10,200},  // [0] dwall
+  float cutvar_range[25][2] = { {-10,200},  // [0] dwall
                                 {0, 50 },   // [1] distance to true vertex
                                 {0, 10000}, // [2] hits in largest shower
                                 {0, 10},    // [3] num shower prongs
@@ -346,9 +349,10 @@ int main( int nargs, char** argv ) {
                                 {-100,100}, // [20] backward muon LLR
 				{-1., 1.},  // [21] shower cos-beam
 				{-1., 1.},  // [22] track cos-beam
-				{0,3000}    // [23] neutrino sum kinetic energy
+				{0,3000},   // [23] neutrino sum kinetic energy
+                                {0,1000.0}  // [24] electron dqdx
   };
-  int cutvar_nbins[24] = { 210, // [0] dwall
+  int cutvar_nbins[25] = { 210, // [0] dwall
                            150, // [1] dist 2 true
                            100, // [2] hits in largest shower
                            10,  // [3] num shower prongs
@@ -371,7 +375,8 @@ int main( int nargs, char** argv ) {
                            51,  // [20] backward muon LLR
 			   21,  // [21] lepton/shower cos-beam
 			   21,  // [22] proton/track cos-beam
-			   30   // [23] neutrino sum kinetic energy
+			   30,  // [23] neutrino sum kinetic energy
+                           50   // [24] electron dqdx
   };
 
 
@@ -384,6 +389,9 @@ int main( int nargs, char** argv ) {
   larflow::reco::TrackForwardBackwardLL muvsproton;
   //muvsproton.set_verbosity(larcv::msg::kDEBUG);
   muvsproton.set_verbosity(larcv::msg::kINFO);
+
+  larflow::reco::ShowerdQdx shower_dqdx_algo;
+  shower_dqdx_algo.set_verbosity(larcv::msg::kINFO);
   
   // dq/dx plots: we will fill for vtx that passes vertex activity cuts
   // TH2D* hdqdx_shower_good = new TH2D("hdqdx_shower_good","",
@@ -576,6 +584,42 @@ int main( int nargs, char** argv ) {
       nu_track_kin.analyze(nuvtx, nusel);
       nu_shower_kin.analyze(nuvtx, nusel, iolcv );
 
+      // calculate shower dqdx
+      std::vector<float> shower_dqdx_v;
+      std::vector<int>   truth_shower_match_pdg_v;
+      std::vector<float> truth_shower_match_cos_v;
+      std::vector<float> truth_shower_match_vtxerr_v;
+      int nelectron_like = 0;
+      float best_dqdx = 2000.;
+      for ( size_t ishower=0; ishower<nuvtx.shower_v.size(); ishower++) {
+        auto const& shower_cluster = nuvtx.shower_v.at(ishower);
+        auto const& shower_trunk   = nuvtx.shower_trunk_v.at(ishower);
+        auto const& shower_pca     = nuvtx.shower_pcaxis_v.at(ishower);
+
+        shower_dqdx_algo.clear();
+        shower_dqdx_algo.processShower( shower_cluster, shower_trunk, shower_pca,
+                                        adc_v, nuvtx );
+        float dqdx = 0;
+        if ( shower_dqdx_algo._best_pixsum_plane>=0 ) {
+          dqdx = shower_dqdx_algo._best_pixsum_dqdx;
+        }
+
+        shower_dqdx_v.push_back(dqdx);
+
+        if ( dqdx<450.0 )
+          nelectron_like++;
+
+        if ( dqdx>0 && best_dqdx>dqdx )
+          best_dqdx = dqdx;
+        
+        // if (is_mc) {
+        //   dqdx_algo.calcGoodShowerTaggingVariables( shower_cluster, shower_trunk, shower_pca,
+        //                                             adc_v, *ev_mcshower );
+          
+        // }
+      }
+      
+
       // neutrino sum KE
       float nu_sum_KE = 0.;
       
@@ -661,7 +705,8 @@ int main( int nargs, char** argv ) {
       vtx_pass[kRecoFV]        = (reco_dwall>5.0); // [10]
 
       //vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 ); // [11]
-      vtx_pass[kShowerLLCut]   = (nusel.largest_shower_avedqdx > 20.0 && nusel.largest_shower_avedqdx>20 ); // [11]
+      //vtx_pass[kShowerLLCut]   = (nusel.largest_shower_avedqdx > 20.0 && nusel.largest_shower_avedqdx>20 ); // [11]
+      vtx_pass[kShowerLLCut]   = (nelectron_like>0);
       //vtx_pass[kShowerLLCut]   = true; // [11] pass for study      
 
       vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5); // [12]
@@ -770,7 +815,8 @@ int main( int nargs, char** argv ) {
         hvariable_good_v[kbackwardmuonllr]->Fill( backwardmu_llr , event_weight );
 	hvariable_good_v[kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
 	hvariable_good_v[kprotoncosbeam]->Fill( track_cos_beam , event_weight );
-	hvariable_good_v[knusumke]->Fill( nu_sum_KE , event_weight );		
+	hvariable_good_v[knusumke]->Fill( nu_sum_KE , event_weight );
+	hvariable_good_v[kelectrondqdx]->Fill( best_dqdx , event_weight );        
       }
       else {
         
@@ -797,7 +843,8 @@ int main( int nargs, char** argv ) {
         hvariable_bad_v[kbackwardmuonllr]->Fill( backwardmu_llr , event_weight );
 	hvariable_bad_v[kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
 	hvariable_bad_v[kprotoncosbeam]->Fill( track_cos_beam , event_weight );
-	hvariable_bad_v[knusumke]->Fill( nu_sum_KE , event_weight );			
+	hvariable_bad_v[knusumke]->Fill( nu_sum_KE , event_weight );
+	hvariable_bad_v[kelectrondqdx]->Fill( best_dqdx , event_weight );
       }
 
       // Cut variables: study correlation between reco state:
@@ -841,7 +888,8 @@ int main( int nargs, char** argv ) {
         hvar_onnu[vtx_reco_state][kbackwardmuonllr]->Fill( backwardmu_llr , event_weight );
 	hvar_onnu[vtx_reco_state][kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
 	hvar_onnu[vtx_reco_state][kprotoncosbeam]->Fill( track_cos_beam , event_weight );
-	hvar_onnu[vtx_reco_state][knusumke]->Fill( nu_sum_KE , event_weight );			
+	hvar_onnu[vtx_reco_state][knusumke]->Fill( nu_sum_KE , event_weight );
+	hvar_onnu[vtx_reco_state][kelectrondqdx]->Fill( best_dqdx , event_weight );        
       }
 
       // dQ/dx plots: need to save dqdx data, which didnt ..
