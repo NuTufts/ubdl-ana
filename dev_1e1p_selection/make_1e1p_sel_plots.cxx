@@ -589,12 +589,17 @@ int main( int nargs, char** argv ) {
       std::vector<int>   truth_shower_match_pdg_v;
       std::vector<float> truth_shower_match_cos_v;
       std::vector<float> truth_shower_match_vtxerr_v;
-      int nelectron_like = 0;
-      float best_dqdx = 2000.;
+
+      float closest_dqdx  = 0.;
+      float closest_gap   = 1e9;
+      float largest_dqdx  = 999.0;
+      int largest_nhits = 0.;
+      
       for ( size_t ishower=0; ishower<nuvtx.shower_v.size(); ishower++) {
         auto const& shower_cluster = nuvtx.shower_v.at(ishower);
         auto const& shower_trunk   = nuvtx.shower_trunk_v.at(ishower);
         auto const& shower_pca     = nuvtx.shower_pcaxis_v.at(ishower);
+
 
         shower_dqdx_algo.clear();
         shower_dqdx_algo.processShower( shower_cluster, shower_trunk, shower_pca,
@@ -606,12 +611,25 @@ int main( int nargs, char** argv ) {
 
         shower_dqdx_v.push_back(dqdx);
 
-        if ( dqdx<450.0 )
-          nelectron_like++;
+        float gapdist = 0.;
+        for (int i=0; i<3; i++) {
+          gapdist += ( shower_trunk.LocationAtPoint(0)[i]-nuvtx.pos[i] )*( shower_trunk.LocationAtPoint(0)[i]-nuvtx.pos[i] );
+        }
+        gapdist = sqrt(gapdist);
 
-        if ( dqdx>0 && best_dqdx>dqdx )
-          best_dqdx = dqdx;
-        
+        // we check the largest shower within 2 cm
+        if ( gapdist<2.0 && largest_nhits<(int)shower_cluster.size() ) {
+          // largest shower update
+          largest_nhits = (int)shower_cluster.size();
+          largest_dqdx  = dqdx;
+        }
+
+        if ( gapdist<closest_gap ) {
+          // update closest shower
+          closest_gap = gapdist;
+          closest_dqdx = dqdx;
+        }
+
         // if (is_mc) {
         //   dqdx_algo.calcGoodShowerTaggingVariables( shower_cluster, shower_trunk, shower_pca,
         //                                             adc_v, *ev_mcshower );
@@ -706,7 +724,7 @@ int main( int nargs, char** argv ) {
 
       //vtx_pass[kShowerLLCut]   = (nusel.largest_shower_ll < 0.0 || nusel.closest_shower_ll < 0.0 ); // [11]
       //vtx_pass[kShowerLLCut]   = (nusel.largest_shower_avedqdx > 20.0 && nusel.largest_shower_avedqdx>20 ); // [11]
-      vtx_pass[kShowerLLCut]   = (nelectron_like>0);
+      vtx_pass[kShowerLLCut]   = (largest_dqdx<450.0); // [11] found at least one electron dq/dx consistant with electron trunk
       //vtx_pass[kShowerLLCut]   = true; // [11] pass for study      
 
       vtx_pass[kWCPixel]       = (nusel.frac_allhits_on_cosmic<0.5); // [12]
@@ -816,7 +834,7 @@ int main( int nargs, char** argv ) {
 	hvariable_good_v[kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
 	hvariable_good_v[kprotoncosbeam]->Fill( track_cos_beam , event_weight );
 	hvariable_good_v[knusumke]->Fill( nu_sum_KE , event_weight );
-	hvariable_good_v[kelectrondqdx]->Fill( best_dqdx , event_weight );        
+	hvariable_good_v[kelectrondqdx]->Fill( largest_dqdx , event_weight );        
       }
       else {
         
@@ -844,7 +862,7 @@ int main( int nargs, char** argv ) {
 	hvariable_bad_v[kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
 	hvariable_bad_v[kprotoncosbeam]->Fill( track_cos_beam , event_weight );
 	hvariable_bad_v[knusumke]->Fill( nu_sum_KE , event_weight );
-	hvariable_bad_v[kelectrondqdx]->Fill( best_dqdx , event_weight );
+	hvariable_bad_v[kelectrondqdx]->Fill( largest_dqdx , event_weight );
       }
 
       // Cut variables: study correlation between reco state:
@@ -889,7 +907,7 @@ int main( int nargs, char** argv ) {
 	hvar_onnu[vtx_reco_state][kleptoncosbeam]->Fill( lepton_cos_beam , event_weight );
 	hvar_onnu[vtx_reco_state][kprotoncosbeam]->Fill( track_cos_beam , event_weight );
 	hvar_onnu[vtx_reco_state][knusumke]->Fill( nu_sum_KE , event_weight );
-	hvar_onnu[vtx_reco_state][kelectrondqdx]->Fill( best_dqdx , event_weight );        
+	hvar_onnu[vtx_reco_state][kelectrondqdx]->Fill( largest_dqdx , event_weight );        
       }
 
       // dQ/dx plots: need to save dqdx data, which didnt ..
