@@ -528,7 +528,7 @@ int main( int nargs, char** argv ) {
       event_weight *= lee_weight;
     }
 
-    if ( std::isnan(event_weight) )
+    if ( std::isnan(event_weight) || std::isinf(event_weight) )
       event_weight = 1.0;
     
     iolcv.read_entry(ientry);
