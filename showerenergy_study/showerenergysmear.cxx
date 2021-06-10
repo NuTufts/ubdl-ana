@@ -249,7 +249,7 @@ int main( int nargs, char** argv ) {
     for (int p=0;p<4;p++){
       std::stringstream ss_vs_elep;
       ss_vs_elep << "hnshowerADC_vs_evislep_" << sample_names[isample]<<"_"<<p;
-      hshowerADC_vs_evislep[isample][p] = new TH2D(ss_vs_elep.str().c_str(), "",50,0,200000,50,0,2500);
+      hshowerADC_vs_evislep[isample][p] = new TH2D(ss_vs_elep.str().c_str(), "",1000,0,250000,1000,0,2000);
       hshowerADC_vs_evislep[isample][p]->SetOption("COLZ");
       hshowerADC_vs_evislep[isample][p]->SetXTitle("ADC Sum");
       hshowerADC_vs_evislep[isample][p]->SetYTitle("Evis_lepton (MeV)");
@@ -786,45 +786,46 @@ std::vector<float> GetADCSumWithSmear(larlite::larflowcluster shower,
             npixels+=1;
             usedpixels.set_pixel(row,col,1);
         }
-        else numused+=1;
+        // else numused+=1;
         // now get surrounding pixels
         // [(r+1,c-1),(r+1,c),(r+1,c+1),(r,c-1),(r,c+1),(r-1,c-1),(r-1,c),(r-1,c+1)]
-        // if (usedpixels.pixel(row+1,col-1)==0){
-        //     adcval += wire_img[p].pixel(row+1,col-1);
-        //     usedpixels.set_pixel(row+1,col-1,1);
-        // }
-        // if (usedpixels.pixel(row+1,col)==0){
-        //     adcval += wire_img[p].pixel(row+1,col);
-        //     usedpixels.set_pixel(row+1,col,1);
-        // }
-        // if (usedpixels.pixel(row+1,col+1)==0){
-        //     adcval += wire_img[p].pixel(row+1,col+1);
-        //     usedpixels.set_pixel(row+1,col+1,1);
-        // }
-        // if (usedpixels.pixel(row,col-1)==0){
-        //     adcval += wire_img[p].pixel(row,col-1);
-        //     usedpixels.set_pixel(row,col-1,1);
-        // }
-        // if (usedpixels.pixel(row,col+1)==0){
-        //     adcval += wire_img[p].pixel(row,col+1);
-        //     usedpixels.set_pixel(row,col+1,1);
-        // }
-        // if (usedpixels.pixel(row-1,col-1)==0){
-        //     adcval += wire_img[p].pixel(row-1,col-1);
-        //     usedpixels.set_pixel(row-1,col-1,1);
-        // }
-        // if (usedpixels.pixel(row-1,col)==0){
-        //     adcval += wire_img[p].pixel(row-1,col);
-        //     usedpixels.set_pixel(row-1,col,1);
-        // }
-        // if (usedpixels.pixel(row-1,col+1)==0){
-        //     adcval += wire_img[p].pixel(row-1,col+1);
-        //     usedpixels.set_pixel(row-1,col+1,1);
-        // }
+        if (usedpixels.pixel(row+1,col-1)==0){
+            adcval += wire_img[p].pixel(row+1,col-1);
+            usedpixels.set_pixel(row+1,col-1,1);
+        }
+        if (usedpixels.pixel(row+1,col)==0){
+            adcval += wire_img[p].pixel(row+1,col);
+            usedpixels.set_pixel(row+1,col,1);
+        }
+        if (usedpixels.pixel(row+1,col+1)==0){
+            adcval += wire_img[p].pixel(row+1,col+1);
+            usedpixels.set_pixel(row+1,col+1,1);
+        }
+        if (usedpixels.pixel(row,col-1)==0){
+            adcval += wire_img[p].pixel(row,col-1);
+            usedpixels.set_pixel(row,col-1,1);
+        }
+        if (usedpixels.pixel(row,col+1)==0){
+            adcval += wire_img[p].pixel(row,col+1);
+            usedpixels.set_pixel(row,col+1,1);
+        }
+        if (usedpixels.pixel(row-1,col-1)==0){
+            adcval += wire_img[p].pixel(row-1,col-1);
+            usedpixels.set_pixel(row-1,col-1,1);
+        }
+        if (usedpixels.pixel(row-1,col)==0){
+            adcval += wire_img[p].pixel(row-1,col);
+            usedpixels.set_pixel(row-1,col,1);
+        }
+        if (usedpixels.pixel(row-1,col+1)==0){
+            adcval += wire_img[p].pixel(row-1,col+1);
+            usedpixels.set_pixel(row-1,col+1,1);
+        }
       }
       sum = sum+adcval;
 
     }//end of loop over Hits
+    std::cout<<"new: "<<p<<" "<<npixels<<"+ "<<numused<<std::endl;
 
     if ((1.0-float(noutpix)/float(shower_c.size()))<=.98) sum_v.push_back(0.0);
     else sum_v.push_back(sum);
