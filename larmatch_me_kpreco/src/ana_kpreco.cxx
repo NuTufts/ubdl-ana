@@ -16,7 +16,10 @@ int main( int nargs, char** argv ) {
   std::string finput_larmatch = argv[1];
   std::string finput_mcinfo   = argv[2];
   std::string foutput = argv[3];
-
+  int ismc = 1;
+  if (nargs==5)
+    ismc = std::atoi(argv[4]);
+  
   larlite::storage_manager io( larlite::storage_manager::kBOTH );
   io.set_data_to_read(  larlite::data::kLArFlow3DHit, "larmatch" );
   io.set_data_to_read(  larlite::data::kMCTruth, "generator" );
@@ -68,21 +71,25 @@ int main( int nargs, char** argv ) {
     prim_lep_start_tp = 0;
     prim_lep_end_tp   = 0;
 
-    ublarcvapp::mctools::MCPixelPGraph mcpg;
-    mcpg.buildgraphonly(io);
-
     larbysmc.process(io);
 
-    // get true neutrino xyz (with space-charge applied)
-    std::vector<float> vtxsce = nuvtx.getPos3DwSCE( io, &sce );
-    
     auto ev_lfhits = (larlite::event_larflow3dhit*)io.get_data( larlite::data::kLArFlow3DHit, "larmatch" );
     std::cout << "num of larflow spacepoints: " << ev_lfhits->size() << std::endl;
     algo.process_larmatch_v2( io, "larmatch" );
 
     auto ev_kp = (larlite::event_larflow3dhit*)io.get_data( larlite::data::kLArFlow3DHit, "keypoint" );
     std::cout << "num of reco keypoints: " << ev_kp->size() << std::endl;
+    
+    // IF MC FILE
+    ublarcvapp::mctools::MCPixelPGraph mcpg;
+    std::vector<float> vtxsce(3,0);
+    if (ismc) {
+      mcpg.buildgraphonly(io); // build truth particle mother-daughter graph
 
+      // get true neutrino xyz (with space-charge applied)
+      vtxsce = nuvtx.getPos3DwSCE( io, &sce );
+    }
+    
     // loop over reconstructed keypoints
     for ( auto kp : *ev_kp ) {
 
@@ -90,29 +97,40 @@ int main( int nargs, char** argv ) {
       if ( int(kp[3])!=0 )
 	continue;
 
-      // calculate dist to truth vertex (after space charge effect)
-      float dist = 0.;
-      for (int i=0; i<3; i++)
-	dist += (kp[i]-vtxsce[i])*(kp[i]-vtxsce[i]);
-      dist = sqrt(dist);
-      if ( dist < closest_nu_kp_to_truth_vtx )
-	closest_nu_kp_to_truth_vtx = dist;
-      if ( dist>2.0 )
+      if (ismc) {
+	// calculate dist to truth vertex (after space charge effect)
+	float dist = 0.;
+	for (int i=0; i<3; i++)
+	  dist += (kp[i]-vtxsce[i])*(kp[i]-vtxsce[i]);
+	dist = sqrt(dist);
+	if ( dist < closest_nu_kp_to_truth_vtx )
+	  closest_nu_kp_to_truth_vtx = dist;
+	      
+	if ( dist>2.0 )
+	  num_nu_fp++; // false positive
+	else
+	  num_nu_tp++; // true positive
+      }//end of is MC
+      else {
+	// not MC -- any nu vertex is FALSE
 	num_nu_fp++;
+      }
     }
-    std::cout << "  closest distance of nu keypoint to truth: " << closest_nu_kp_to_truth_vtx << " cm"  << std::endl;
-    if ( closest_nu_kp_to_truth_vtx<2.0 )
-      num_nu_tp++;
 
+    if ( ismc ) {
+      // IS MC -- was any close to the true neutrino point
+      std::cout << "  closest distance of nu keypoint to truth: " << closest_nu_kp_to_truth_vtx << " cm"  << std::endl;
+    }// end of if MC
+    
     // primary lepton
     
     io.set_id( io.run_id(), io.subrun_id(), io.event_id() );
     io.next_event();    
-
+    
     kprecoana_event->Fill();
-
-    if ( ientry+1>=50 )
-      break;
+    
+    // if ( ientry+1>=50 )
+    //   break;
   }
   io.close();
   outroot->Write();
