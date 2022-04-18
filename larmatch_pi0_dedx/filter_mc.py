@@ -19,7 +19,7 @@ for l in flines:
     e = int(info[2])
     entry_list.append( (r,s,e) )
 entry_list.sort()
-print(entry_list)
+#print(entry_list)
 
 froot = rt.TFile( args.dlmerged, "open" )
 larlite_id_tree = froot.Get("larlite_id_tree")
@@ -33,13 +33,13 @@ for i in range(nentries):
     e = larlite_id_tree._event_id
 
     rse = (r,s,e)
-    print(rse)
+    #print(rse)
     if rse in entry_list:
         # save this event!
         save_entry.append(i)
 froot.Close()
 
-save_entry = [3,8]
+#save_entry = [3,8]
 
 print("Entries to save: ",save_entry)
 if len(save_entry)==0:
